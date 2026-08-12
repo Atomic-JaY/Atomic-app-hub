@@ -1,0 +1,108 @@
+PHOTO NAMING — Life Safety PM Tracker
+Atomic Industries, 50479 Birch Drive, Shelby Township, MI
+Final iteration, 08/11/2026
+
+
+WHERE PHOTOS GO
+---------------
+This "photos" folder must sit in the same folder as "Life Safety PM Tracker.html".
+
+    Life Safety PM Tracker.html
+    Life Safety PM Log.xlsx
+    photos/            <-- this folder
+        FE1.jpg
+        FE1-loc.jpg
+        ...
+
+Drop a photo in, then open (or reopen) the tracker and click that marker. Nothing
+needs rebuilding. If a photo is missing, the card tells you the filename it wants.
+
+There is also a single-file version, "Life Safety PM Tracker (single file).html",
+sent alongside this zip rather than inside it. All 96 photos are built into that
+one file. Use it for email, SharePoint, or a shared drive, where a sibling folder
+would not travel with the file. Use the folder version here when you want to keep
+adding or swapping photos yourself.
+
+
+HOW TO NAME EACH FILE
+---------------------
+Use the device ID exactly as it appears on the marker.
+
+    FE1.jpg          close-up of the unit
+    FE1-loc.jpg      wide shot showing where it sits on the wall
+    FE1-2.jpg        any extra shot (optional)
+
+There is no tag slot. The sign-off record lives in the tracker itself, so
+re-photographing tags every month would only duplicate it.
+
+Same pattern for the other two types:
+
+    EL7.jpg   EL7-loc.jpg     emergency light EL7
+    EW2.jpg   EW2-loc.jpg     eye wash station EW2
+
+Case matters on the ID: use FE1, not fe1.
+
+Full ID list: FE1 - FE21, EL1 - EL23, EW1 - EW4.
+
+COMPLETE: all 48 devices photographed - FE1-FE21, EL1-EL23, EW1-EW4.
+96 photos, a close-up and a location shot for each.
+
+To replace or improve any of them, just drop a new file over the old one
+using the same name.
+
+
+FILE TYPES THAT WORK
+--------------------
+    .jpg  .jpeg  .png  .webp
+
+HEIC DOES NOT WORK. iPhones shoot HEIC by default and browsers cannot display it.
+Fix it once, before you start:
+
+    Settings > Camera > Formats > Most Compatible
+
+
+SIZE
+----
+Straight-off-the-phone photos are far larger than needed. The ones already in here
+were reduced to 1200x1600, about 300 KB each, which is plenty for the card and the
+full-screen view. Send them at full size and they will be reduced on the way in.
+
+
+WHAT THE PHOTOS ESTABLISHED
+---------------------------
+Everything the log was missing has now been read off these photos and is in the
+workbook:
+
+    - Agent TYPE for all 21 extinguishers. Sixteen are dry chemical and five are
+      CO2: FE2, FE4, FE5, FE6, FE7. That distinction matters - CO2 cylinders get a
+      5-year hydrostatic test, dry chemical 12-year, so it changes those due dates
+      by seven years.
+
+    - DATE OF MANUFACTURE. The shell stamps read ZX26 and the collar tags are
+      marked 2026, so the cylinders are 2026 units. NFPA 10 runs the internal-exam
+      and hydrostatic-test clocks from date of manufacture, and the log now does
+      too, using 01/01/2026 - the earliest date the stamp allows, so the due dates
+      it produces are the most conservative ones. If you ever find a month on a
+      shell, put the real date in the "Mfd Date" column and both clocks move with
+      it.
+
+    - LAST ANNUAL MAINTENANCE for the 11 UniFirst-tagged units (FE9, FE10, FE12
+      through FE20), confirmed as March 2026.
+
+The remaining 10 "Untracked" entries on the FE tab are the annual maintenance on
+the 10 units that carry no UniFirst tag. Those are the ones to chase.
+
+WHAT IS STILL WORTH A LOOK
+--------------------------
+    - EW2 is a squeeze-bottle station, and it is signed as an emergency eyewash at
+      the hi-lo battery chargers. Under ANSI/ISEA Z358.1 bottles are supplemental
+      only; they do not satisfy the 15-minute flush a battery-acid splash needs.
+      A plumbed or self-contained unit is what that location calls for.
+
+    - Z358.1 asks for a weekly activation of plumbed eyewash stations, not monthly.
+      The log is set to weekly, which is why all four read overdue against the
+      07/23/2026 baseline. That is the standard talking, not a bug - the fix is a
+      weekly walk, not a longer interval.
+
+EL22 (server room) and EL23 (south aisle, plant side of the wall from EL14)
+were added 08/10/2026 and are on the plan drawing now.
