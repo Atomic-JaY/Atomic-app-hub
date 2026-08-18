@@ -1,0 +1,996 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safety Training Compliance — Atomic Industries</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  /* ANSI Z535 safety sign palette, luminance-lifted for a dark ground.
+     Caution yellow is unchanged - it is already designed to read on black. */
+  --safety:#2FB673; --caution:#F2CD00; --danger:#F04458; --notice:#4C9AFF;
+  --board:#12151A; --panel:#1B1F24; --steel:#2E353C;
+  --ink:#E7EBEF; --ink2:#98A2AB; --rule:#333A42; --rule2:#282E35;
+  --head:#22272D; --hover:#242A31; --field:#22272D;
+  --mast:#0D1014; --mast-ink:#FFFFFF; --btn:#2C333B;
+  --amber:#F2CD00; --chip-ink:#0F1317;
+  --alert-bad:#2B1418; --alert-ok:#10241B;
+  --cell-edge:rgba(255,255,255,.14);
+  --cond:'Arial Narrow','Helvetica Neue Condensed','Liberation Sans Narrow','Roboto Condensed',Arial,sans-serif;
+  --body:'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  --mono:Consolas,'SF Mono',Menlo,'Liberation Mono',monospace;
+  --stripe:repeating-linear-gradient(45deg,#0E1116 0 7px,#F2CD00 7px 14px);
+}
+html[data-theme="light"]{
+  --safety:#007A3D; --caution:#F2CD00; --danger:#C8102E; --notice:#005EB8;
+  --board:#E4E7EA; --panel:#FFFFFF; --steel:#CFD5DA;
+  --ink:#15181C; --ink2:#4A5259; --rule:#B4BBC2; --rule2:#E3E7EA;
+  --head:#F5F7F8; --hover:#F7F9FA; --field:#FFFFFF;
+  --mast:#15181C; --mast-ink:#FFFFFF; --btn:#15181C;
+  --amber:#9A8300; --chip-ink:#FFFFFF;
+  --alert-bad:#FDECEF; --alert-ok:#EAF6EF;
+  --cell-edge:rgba(0,0,0,.14);
+  --stripe:repeating-linear-gradient(45deg,#15181C 0 7px,#F2CD00 7px 14px);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--board);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+.wrap{max-width:1360px;margin:0 auto;padding:0 20px 64px}
+
+/* ---------- masthead ---------- */
+header{background:var(--mast);color:var(--mast-ink);margin-bottom:0}
+.mast{max-width:1360px;margin:0 auto;padding:18px 20px 16px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.mast h1{font-family:var(--cond);font-size:30px;font-weight:700;letter-spacing:.055em;text-transform:uppercase;margin:0;line-height:1}
+.mast .sub{font-family:var(--mono);font-size:11px;color:#98A1A9;letter-spacing:.09em;text-transform:uppercase;margin-top:7px}
+.hazbar{height:9px;background:var(--stripe)}
+
+/* ---------- controls ---------- */
+.bar{background:var(--panel);border:1px solid var(--rule);border-top:none;padding:13px 16px;display:flex;flex-wrap:wrap;gap:11px;align-items:center}
+.btn{font-family:var(--cond);text-transform:uppercase;letter-spacing:.07em;font-size:14px;font-weight:700;
+  background:var(--btn);color:#fff;border:none;padding:10px 17px;cursor:pointer}
+.btn:hover{background:var(--notice)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--board)}
+select,input[type=search],input[type=number]{font-family:var(--body);font-size:13px;padding:8px 9px;border:1px solid var(--rule);background:var(--field);color:var(--ink)}
+input[type=search]{min-width:190px}
+label.f{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);display:block;margin-bottom:4px}
+.fg{display:flex;flex-direction:column}
+.spacer{flex:1}
+*:focus-visible{outline:3px solid var(--notice);outline-offset:2px}
+
+/* ---------- hero plate: the signature ---------- */
+.hero{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:0;border:1px solid var(--rule);border-top:none;background:var(--panel)}
+.plate{background:var(--mast);color:var(--mast-ink);padding:24px 26px 22px;position:relative}
+.plate .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#98A1A9}
+.plate .num{font-family:var(--cond);font-size:104px;font-weight:700;line-height:.86;letter-spacing:-.015em;margin:10px 0 2px;font-variant-numeric:tabular-nums}
+.plate .den{font-family:var(--mono);font-size:12px;color:#B6BEC5;letter-spacing:.04em}
+.gauge{margin-top:18px;height:26px;background:var(--stripe);border:1.5px solid var(--mast-ink);position:relative;overflow:hidden}
+.gauge i{position:absolute;inset:0 auto 0 0;background:var(--safety);display:block;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.gauge span{position:absolute;right:7px;top:0;bottom:0;display:flex;align-items:center;font-family:var(--mono);font-size:10px;font-weight:700;color:#15181C;background:var(--caution);padding:0 5px;letter-spacing:.05em}
+
+/* status tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid var(--rule)}
+.tile{padding:20px 18px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.tile:nth-child(4n){border-right:none}
+.tile:nth-child(n+5){border-bottom:none}
+.tile .k{font-family:var(--cond);font-size:44px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.tile .t{font-family:var(--cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;margin-top:7px}
+.tile .d{font-size:11.5px;color:var(--ink2);margin-top:3px;line-height:1.35}
+.tile.sf .k{color:var(--safety)} .tile.ca .k{color:var(--amber)} .tile.da .k{color:var(--danger)} .tile.no .k{color:var(--notice)}
+
+/* ---------- panels ---------- */
+section{background:var(--panel);border:1px solid var(--rule);border-top:none}
+.ph{display:flex;align-items:baseline;gap:12px;padding:14px 16px;border-bottom:1px solid var(--rule);background:var(--head)}
+.ph h2{font-family:var(--cond);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.075em;margin:0}
+.ph .note{font-size:11.5px;color:var(--ink2)}
+.cols{display:grid;grid-template-columns:1fr 1fr}
+.cols>div:first-child{border-right:1px solid var(--rule)}
+
+/* dept bars */
+.dept{padding:15px 16px}
+.drow{display:grid;grid-template-columns:1fr 62px;gap:11px;align-items:center;margin-bottom:11px}
+.dname{font-family:var(--cond);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.dmeta{font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.dbar{height:15px;background:var(--steel);margin-top:4px;position:relative}
+.dbar i{position:absolute;inset:0 auto 0 0;background:var(--safety)}
+.dpct{font-family:var(--cond);font-size:22px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);
+  text-align:left;padding:9px 10px;border-bottom:1.5px solid var(--ink);background:var(--head);position:sticky;top:0}
+td{padding:8px 10px;border-bottom:1px solid var(--rule2);font-size:13px;vertical-align:top}
+tr:hover td{background:var(--hover)}
+.scroll{max-height:430px;overflow:auto}
+.mono{font-family:var(--mono);font-size:12px}
+.nowrap{white-space:nowrap}
+
+/* status chips */
+.chip{display:inline-block;font-family:var(--cond);font-size:11.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;padding:2px 7px;white-space:nowrap}
+.CURRENT{background:var(--safety);color:var(--chip-ink)}
+.DUE{background:var(--caution);color:#15181C}
+.EXPIRED{background:var(--danger);color:#fff}
+.MISSING{background:var(--stripe);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000}
+.CHECK{background:var(--notice);color:#fff}
+.NA{background:var(--steel);color:var(--ink2)}
+
+/* matrix */
+.mx{overflow:auto;max-height:560px}
+.mx table{border-collapse:separate;border-spacing:0}
+.mx th.rot{height:132px;padding:0 0 8px;vertical-align:bottom;background:var(--head)}
+.mx th.rot>div{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--cond);font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin:0 auto;white-space:nowrap;padding-bottom:6px}
+.mx td.nm,.mx th.nm{position:sticky;left:0;background:var(--panel);z-index:2;border-right:1.5px solid var(--ink);min-width:172px}
+.mx th.nm{background:var(--head);z-index:3}
+.mx tr:hover td.nm{background:var(--hover)}
+.cellbox{width:30px;height:24px;display:block;margin:0 auto;border:1px solid var(--cell-edge)}
+.c-CURRENT{background:var(--safety)} .c-DUE{background:var(--caution)}
+.c-EXPIRED{background:var(--danger)} .c-MISSING{background:var(--stripe)}
+.c-CHECK{background:var(--notice)} .c-NA{background:var(--steel);opacity:.5}
+.mx td{padding:3px 4px;border-bottom:1px solid var(--rule2)}
+
+/* lock board */
+.locks{display:flex;flex-wrap:wrap;gap:7px;padding:16px}
+.lock{width:78px;border:1.5px solid var(--ink);background:var(--panel);padding:6px 5px;text-align:center}
+.lock .id{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.03em}
+.lock .who{font-family:var(--cond);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink2);
+  margin-top:3px;height:25px;overflow:hidden;line-height:1.2}
+.lock .st{height:5px;margin-top:5px}
+.lock.assigned{border-color:var(--safety)} .lock.assigned .st{background:var(--safety)}
+.lock.station .st{background:var(--steel)}
+.lock.flag{border-color:var(--danger);border-width:2.5px} .lock.flag .st{background:var(--danger)}
+.lock.lost{border-style:dashed;opacity:.62} .lock.lost .st{background:var(--stripe)}
+
+.legend{display:flex;flex-wrap:wrap;gap:15px;padding:11px 16px;border-top:1px solid var(--rule);background:var(--head);
+  font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink2);align-items:center}
+.legend b{display:inline-block;width:15px;height:12px;margin-right:5px;vertical-align:-1px;border:1px solid var(--cell-edge)}
+
+/* empty + alerts */
+.empty{background:var(--panel);border:1px solid var(--rule);border-top:none;padding:52px 34px;text-align:center}
+.empty h2{font-family:var(--cond);font-size:26px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+.empty p{max-width:600px;margin:0 auto 9px;color:var(--ink2)}
+.empty ol{max-width:520px;margin:20px auto 0;text-align:left;color:var(--ink2);font-size:13.5px;padding-left:22px}
+.alert{background:var(--alert-bad);border:1px solid var(--danger);border-left:7px solid var(--danger);padding:12px 15px;margin:14px 0;font-size:13px}
+.alert.ok{background:var(--alert-ok);border-color:var(--safety);border-left-color:var(--safety)}
+.hint{font-size:11.5px;color:var(--ink2);padding:9px 16px;border-top:1px solid var(--rule);background:var(--head)}
+.mt{margin-top:22px}
+.mt section:first-child,.mt>section{border-top:1px solid var(--rule)}
+
+
+/* ---------- safety walk findings ---------- */
+.fstrip{display:grid;grid-template-columns:repeat(5,1fr) minmax(210px,1.4fr);border-bottom:1px solid var(--rule)}
+.fstat{padding:16px 14px;border-right:1px solid var(--rule)}
+.fstat .k{font-family:var(--cond);font-size:38px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.fstat .t{font-family:var(--cond);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;margin-top:5px;color:var(--ink2)}
+.fstat.ok .k{color:var(--safety)} .fstat.warn .k{color:var(--amber)} .fstat.bad .k{color:var(--danger)}
+.fgauge{padding:16px 16px;background:var(--mast);color:var(--mast-ink)}
+.fgauge .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#98A1A9}
+.fgauge .num{font-family:var(--cond);font-size:44px;font-weight:700;line-height:1;margin:6px 0 8px;font-variant-numeric:tabular-nums}
+.fgauge .bar{height:16px;background:var(--stripe);border:1.5px solid var(--mast-ink);position:relative;overflow:hidden}
+.fgauge .bar i{position:absolute;inset:0 auto 0 0;background:var(--safety);display:block}
+.fgauge .sub{font-family:var(--mono);font-size:10px;color:#B6BEC5;margin-top:6px}
+.chart{padding:16px}
+.chart h3{font-family:var(--cond);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin:0 0 14px}
+.crow{margin-bottom:12px}
+.clab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.clab b{font-family:var(--cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.clab span{font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.hbar{height:18px;background:var(--steel);display:flex;overflow:hidden}
+.hbar i{display:block;height:100%}
+.seg-closed{background:var(--safety)}
+.seg-A{background:var(--danger)} .seg-B{background:var(--caution)} .seg-C{background:var(--notice)}
+.seg-none{background:#8A9199}
+.seg-over{background:var(--stripe)}
+.rlegend{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--ink2);margin-top:4px}
+.rlegend b{display:inline-block;width:14px;height:11px;margin-right:5px;vertical-align:-1px;border:1px solid var(--cell-edge)}
+.od{background:var(--danger);color:#fff;font-family:var(--cond);font-size:11px;font-weight:700;padding:1px 6px;
+  text-transform:uppercase;letter-spacing:.06em}
+@media(max-width:900px){.fstrip{grid-template-columns:repeat(2,1fr)}.fgauge{grid-column:1/-1}}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr} .tiles{border-left:none;grid-template-columns:repeat(2,1fr)}
+  .tile:nth-child(2n){border-right:none} .tile:nth-child(n+3){border-bottom:none}
+  .cols{grid-template-columns:1fr} .cols>div:first-child{border-right:none;border-bottom:1px solid var(--rule)}
+  .plate .num{font-size:76px}
+}
+@media print{
+  :root,html[data-theme]{--board:#fff;--panel:#fff;--head:#fff;--hover:#fff;--ink:#000;
+    --ink2:#333;--rule:#999;--rule2:#ccc;--mast:#fff;--mast-ink:#000;--steel:#ddd;
+    --field:#fff;--chip-ink:#000;--alert-bad:#fff;--alert-ok:#fff;--amber:#7a6800;
+    --safety:#006100;--danger:#9C0006;--notice:#00457a;--cell-edge:rgba(0,0,0,.35)}
+  body{background:#fff} .bar,.btn{display:none!important}
+  section,.hero,.empty{border-color:#999;break-inside:avoid}
+  .scroll,.mx{max-height:none;overflow:visible}
+  header{background:#fff;color:#000;border-bottom:2px solid #000}
+  .mast h1{color:#000} .mast .sub{color:#333}
+  .plate{background:#fff;color:#000;border:2px solid #000}
+  .plate .num{color:#000} .plate .lbl,.plate .den{color:#333}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header>
+  <div class="mast">
+    <div>
+      <h1>Safety Training Compliance</h1>
+      <div class="sub" id="mastsub">Atomic Industries · Shelby Township, MI · No file loaded</div>
+    </div>
+    <div class="sub" id="asof"></div>
+  </div>
+  <div class="hazbar"></div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <button class="btn" id="pick">Load workbook</button>
+    <input type="file" id="file" accept=".xlsx,.xlsm" style="display:none">
+    <div class="fg"><label class="f" for="fdept">Department</label><select id="fdept"><option>All</option></select></div>
+    <div class="fg"><label class="f" for="fstat">Status</label><select id="fstat">
+      <option>All</option><option>Action needed</option><option>Current</option>
+      <option>Due Soon</option><option>Expired</option><option>Missing</option></select></div>
+    <div class="fg"><label class="f" for="fq">Search</label><input type="search" id="fq" placeholder="Name or course"></div>
+    <div class="fg"><label class="f" for="fwin">Warn (days)</label><input type="number" id="fwin" value="60" min="0" max="365" style="width:80px"></div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="csv">Export action list</button>
+    <button class="btn ghost" id="csvf">Export findings</button>
+    <button class="btn ghost" id="print">Print audit packet</button>
+    <button class="btn ghost" id="theme" aria-pressed="false">Light mode</button>
+  </div>
+
+  <div id="empty" class="empty">
+    <h2>Load the master workbook to begin</h2>
+    <p>This dashboard reads <span class="mono">Safety_Compliance_Master.xlsx</span> and calculates everything live. It never writes to the file — the workbook stays the single record of truth.</p>
+    <ol>
+      <li>Keep the workbook on the network drive and record completions there.</li>
+      <li>Click <strong>Load workbook</strong> and pick the file whenever you need a report.</li>
+      <li>Filter to what you need, then <strong>Print audit packet</strong> for a dated hard copy.</li>
+    </ol>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="hero">
+      <div class="plate">
+        <div class="lbl">Overall compliance</div>
+        <div class="num" id="pct">—</div>
+        <div class="den" id="den"></div>
+        <div class="gauge"><i id="gfill" style="width:0"></i><span id="gshort"></span></div>
+      </div>
+      <div class="tiles">
+        <div class="tile sf"><div class="k" id="kCur">0</div><div class="t">Current</div><div class="d">In date, outside the warning window</div></div>
+        <div class="tile ca"><div class="k" id="kDue">0</div><div class="t">Due soon</div><div class="d">Expires inside the window — schedule now</div></div>
+        <div class="tile da"><div class="k" id="kExp">0</div><div class="t">Expired</div><div class="d">Past due. Counts against compliance</div></div>
+        <div class="tile da"><div class="k" id="kMis">0</div><div class="t">Missing</div><div class="d">Required for the role, never completed</div></div>
+      </div>
+    </div>
+
+    <div id="alerts"></div>
+
+    <section class="mt">
+      <div class="ph"><h2>Compliance by department</h2><span class="note">Denominator is role-required courses only</span></div>
+      <div class="cols">
+        <div class="dept" id="depts"></div>
+        <div>
+          <div class="ph" style="border-top:none"><h2 style="font-size:15px">Action list</h2><span class="note" id="actn"></span></div>
+          <div class="scroll"><table><thead><tr><th>Employee</th><th>Course</th><th class="nowrap">Expires</th><th>Status</th></tr></thead><tbody id="action"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt">
+      <div class="ph"><h2>Training matrix</h2><span class="note">Every person against every course. Hover a cell for dates.</span></div>
+      <div class="mx" id="mx"></div>
+      <div class="legend">
+        <span><b class="c-CURRENT"></b>Current</span><span><b class="c-DUE"></b>Due soon</span>
+        <span><b class="c-EXPIRED"></b>Expired</span><span><b class="c-MISSING"></b>Missing</span>
+        <span><b class="c-NA"></b>Not required</span><span><b class="c-CHECK"></b>Check role</span>
+      </div>
+    </section>
+
+    <section class="mt">
+      <div class="ph"><h2>LOTO lock board</h2><span class="note" id="lockn"></span></div>
+      <div class="locks" id="locks"></div>
+      <div class="legend">
+        <span><b style="background:var(--safety)"></b>Assigned</span>
+        <span><b style="background:var(--steel)"></b>In station</span>
+        <span><b style="background:var(--danger)"></b>Holder's LOTO training not current</span>
+        <span><b style="background:var(--stripe)"></b>Lost / retired</span>
+      </div>
+      <div class="hint" id="stations"></div>
+    </section>
+
+
+    <section class="mt" id="fdsec">
+      <div class="ph"><h2>Safety walk findings</h2><span class="note" id="fdn"></span></div>
+      <div id="fdempty" class="hint">This workbook has no Safety Walk Findings sheet.</div>
+      <div id="fdwrap" style="display:none">
+        <div class="fstrip">
+          <div class="fstat"><div class="k" id="fWalks">0</div><div class="t">Walks logged</div></div>
+          <div class="fstat"><div class="k" id="fTot">0</div><div class="t">Findings</div></div>
+          <div class="fstat bad"><div class="k" id="fOpen">0</div><div class="t">Open</div></div>
+          <div class="fstat ok"><div class="k" id="fClosed">0</div><div class="t">Closed</div></div>
+          <div class="fstat bad"><div class="k" id="fOver">0</div><div class="t">Overdue</div></div>
+          <div class="fgauge">
+            <div class="lbl">Closure rate</div>
+            <div class="num" id="fRate">0%</div>
+            <div class="bar"><i id="fRateBar" style="width:0"></i></div>
+            <div class="sub" id="fRateSub"></div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="chart" id="riskChart"></div>
+          <div class="chart" id="catChart"></div>
+        </div>
+        <div class="scroll"><table><thead><tr><th>ID</th><th>Category</th><th>Finding</th>
+          <th>Risk</th><th>Champion</th><th class="nowrap">Target / due</th><th class="nowrap">Days open</th><th>Status</th></tr></thead>
+          <tbody id="findTbl"></tbody></table></div>
+        <div class="hint" id="fdfoot"></div>
+      </div>
+    </section>
+
+    <section class="mt" id="sossec">
+      <div class="ph"><h2>Unsafe situation reports (SOS)</h2><span class="note" id="sosn"></span></div>
+      <div id="sosempty" class="hint">This workbook has no SOS Reports sheet.</div>
+      <div id="soswrap" style="display:none">
+        <div class="fstrip">
+          <div class="fstat"><div class="k" id="sTot">0</div><div class="t">Reports</div></div>
+          <div class="fstat bad"><div class="k" id="sOut">0</div><div class="t">Outstanding</div></div>
+          <div class="fstat bad"><div class="k" id="sOver">0</div><div class="t">Overdue</div></div>
+          <div class="fstat bad"><div class="k" id="sInj">0</div><div class="t">Injuries</div></div>
+          <div class="fstat warn"><div class="k" id="sGap">0</div><div class="t">Missing page 2</div></div>
+          <div class="fgauge">
+            <div class="lbl">Reports closed</div>
+            <div class="num" id="sRate">0%</div>
+            <div class="bar"><i id="sRateBar" style="width:0"></i></div>
+            <div class="sub" id="sRateSub"></div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="chart" id="sevChart"></div>
+          <div class="chart" id="typChart"></div>
+        </div>
+        <div class="chart" id="monChart" style="border-top:1px solid var(--rule)"></div>
+        <div class="scroll"><table><thead><tr><th>SOS</th><th class="nowrap">Date</th><th>Reported by</th>
+          <th>Area</th><th>Severity</th><th>Type</th><th class="nowrap">Target</th><th>Status</th><th>Flags</th></tr></thead>
+          <tbody id="sosTbl"></tbody></table></div>
+        <div class="hint" id="sosfoot"></div>
+      </div>
+    </section>
+    <section class="mt">
+      <div class="ph"><h2>Full training record</h2><span class="note">Filtered view — this is what prints in the audit packet</span></div>
+      <div class="scroll"><table><thead><tr><th>Emp ID</th><th>Employee</th><th>Department</th><th>Role</th>
+        <th>Course</th><th class="nowrap">Completed</th><th class="nowrap">Expires</th><th>Status</th></tr></thead>
+        <tbody id="detail"></tbody></table></div>
+      <div class="hint" id="detn"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let DATA=null;
+
+const S={CURRENT:'CURRENT','DUE SOON':'DUE',EXPIRED:'EXPIRED',MISSING:'MISSING','CHECK ROLE':'CHECK','N/A':'NA'};
+const fmt=d=>d instanceof Date&&!isNaN(d)?
+  String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+'/'+d.getFullYear():'—';
+const expTxt=r=>r.oneTime?(r.last?'one-time':'\u2014'):(r.exp?fmt(r.exp):'\u2014');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
+const addMonths=(d,m)=>{const x=new Date(d.getTime());const day=x.getDate();x.setMonth(x.getMonth()+Number(m));
+  if(x.getDate()<day)x.setDate(0);return x;};
+const toDate=v=>v instanceof Date?v:(typeof v==='number'?new Date(Date.UTC(1899,11,30+v)):(v?new Date(v):null));
+
+$('pick').onclick=()=>{
+  if(typeof XLSX==='undefined'){
+    $('empty').innerHTML='<h2>The spreadsheet reader did not load</h2>'+
+      '<p>This page pulls one library from the internet the first time it opens. Reconnect and reload, '+
+      'or ask IT to allow <span class="mono">cdnjs.cloudflare.com</span>. Once loaded it works offline.</p>';
+    return;}
+  $('file').click();
+};
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{try{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
+    DATA=parse(wb);
+    $('mastsub').textContent='Atomic Industries · Shelby Township, MI · '+f.name;
+    $('asof').textContent='Report generated '+fmt(today());
+    $('empty').style.display='none';$('app').style.display='';
+    fillDepts();render();
+  }catch(err){
+    $('empty').innerHTML='<h2>That file could not be read</h2><p>'+esc(err.message)+
+      '</p><p>Pick the master workbook saved from Excel. A file still open in Excel can be locked — close it and try again.</p>';
+    console.error(err);
+  }};
+  r.readAsArrayBuffer(f);
+};
+
+function grid(wb,name){const ws=wb.Sheets[name];
+  if(!ws)throw new Error('The workbook has no sheet named "'+name+'". Load the master workbook, not an export.');
+  return XLSX.utils.sheet_to_json(ws,{header:1,raw:false,cellDates:true,defval:''});}
+
+function parse(wb){
+  // --- employees: header row is the one containing "Emp ID"
+  const eg=grid(wb,'Employees');
+  let eh=eg.findIndex(r=>r.some(c=>String(c).trim()==='Emp ID'));
+  const ec=eg[eh].map(c=>String(c).trim());
+  const col=(arr,n)=>arr.indexOf(n);
+  const employees=[];
+  for(let i=eh+1;i<eg.length;i++){const r=eg[i];const id=String(r[col(ec,'Emp ID')]||'').trim();
+    if(!id)continue;
+    employees.push({id,last:r[col(ec,'Last Name')],first:r[col(ec,'First Name')],
+      name:(String(r[col(ec,'Last Name')]||'')+', '+String(r[col(ec,'First Name')]||'')).replace(/^, |, $/,''),
+      dept:String(r[col(ec,'Department')]||'').trim(),role:String(r[col(ec,'Role')]||'').trim(),
+      sup:r[col(ec,'Supervisor')],active:String(r[col(ec,'Active?')]||'').trim()});}
+
+  // --- courses
+  const cg=grid(wb,'Courses');
+  const chi=cg.findIndex(r=>r.some(c=>String(c).trim()==='Course ID'));
+  const cc=cg[chi].map(c=>String(c).trim());
+  const courses=[];
+  for(let i=chi+1;i<cg.length;i++){const r=cg[i];const id=String(r[col(cc,'Course ID')]||'').trim();
+    if(!/^C-/.test(id))continue;
+    courses.push({id,name:String(r[col(cc,'Course Name')]||'').trim(),
+      cat:r[col(cc,'Category')],months:Number(r[col(cc,'Recert Interval (Months)')])||0,
+      sp:String(r[col(cc,'SafetyPlus Course Name')]||'').trim(),
+      reg:r[col(cc,'Regulatory Reference')]});}
+
+  // --- requirements: find the row that lists course IDs, roles follow beneath
+  const rg=grid(wb,'Requirements');
+  let idRow=-1;
+  for(let i=0;i<rg.length;i++){if(rg[i].slice(1).filter(c=>/^C-\d+/.test(String(c).trim())).length>=2){idRow=i;break;}}
+  if(idRow<0)throw new Error('The Requirements sheet has no row of course IDs.');
+  const reqIds=rg[idRow].map(c=>String(c).trim());
+  const req={};
+  for(let i=idRow+1;i<rg.length;i++){const role=String(rg[i][0]||'').trim();
+    if(!role||/^Rename roles/i.test(role))continue;
+    req[role]={};
+    for(let j=1;j<reqIds.length;j++){if(/^C-/.test(reqIds[j]))
+      req[role][reqIds[j]]=String(rg[i][j]||'').trim().toUpperCase()==='X';}}
+
+  // --- completions: latest date per employee+course, from both sources
+  const latest={},history=[];
+  const bump=(eid,cid,d,src)=>{
+    if(!eid||!cid||!d||isNaN(d))return;
+    history.push({eid,cid,d,src});
+    const k=eid+'|'+cid;
+    if(!latest[k]||d>latest[k])latest[k]=d;};
+
+  // manual sheet (renamed from 'Completions'; accept either for older workbooks)
+  let mg=null;
+  for(const nm of ['Manual Completions','Completions']){
+    try{mg=grid(wb,nm);break;}catch(e){}}
+  if(mg){
+    const mhi=mg.findIndex(r=>r.some(c=>String(c).trim()==='Emp ID'));
+    if(mhi>=0){const mc=mg[mhi].map(c=>String(c).trim());
+      for(let i=mhi+1;i<mg.length;i++){const r=mg[i];
+        bump(String(r[col(mc,'Emp ID')]||'').trim(),
+             String(r[col(mc,'Course ID')]||'').trim(),
+             toDate(r[col(mc,'Date Completed')]),'manual');}}}
+
+  // SafetyPlus export pasted into SP Import
+  const spMap={};
+  courses.forEach(c=>{if(c.sp)spMap[c.sp.toLowerCase()]=c.id;});
+  const imp={rows:0,imported:0,offRoster:0,noId:0,unmatched:{}};
+  const rosterIds=new Set(employees.map(e=>String(e.id)));
+  try{const sg=grid(wb,'SP Import');
+    const shi=sg.findIndex(r=>r.some(c=>String(c).trim()==='Course Title'));
+    const sc=sg[shi].map(c=>String(c).trim());
+    for(let i=shi+1;i<sg.length;i++){const r=sg[i];
+      const title=String(r[col(sc,'Course Title')]||'').trim();
+      const nm=String(r[col(sc,'Employee Name')]||'').trim();
+      if(!title||!nm)continue;
+      imp.rows++;
+      const m=nm.match(/\((\d+)\)\s*$/);
+      if(!m){imp.noId++;continue;}
+      const eid=String(Number(m[1]));
+      const cid=spMap[title.toLowerCase()];
+      if(!cid){imp.unmatched[title]=(imp.unmatched[title]||0)+1;continue;}
+      if(!rosterIds.has(eid)){imp.offRoster++;continue;}
+      imp.imported++;
+      bump(eid,cid,toDate(r[col(sc,'Date Completed')]),'safetyplus');}
+  }catch(e){}
+
+  // --- locks
+  let locks=[],stations=[];
+  try{const lg=grid(wb,'LOTO Lock Register');
+    const lhi=lg.findIndex(r=>r.some(c=>String(c).trim()==='Lock ID'));
+    const lc=lg[lhi].map(c=>String(c).trim());
+    for(let i=lhi+1;i<lg.length;i++){const r=lg[i];const id=String(r[col(lc,'Lock ID')]||'').trim();
+      if(!id||/\s/.test(id)||id.length>24)continue;   // a real lock ID has no spaces
+      locks.push({id,type:r[col(lc,'Lock Type')],color:r[col(lc,'Color')],
+        emp:String(r[col(lc,'Assigned To (Emp ID)')]||'').trim(),
+        station:String(r[col(lc,'Home Station')]||'').trim(),
+        status:String(r[col(lc,'Status')]||'').trim()});}
+  }catch(e){}
+  try{const sg=grid(wb,'Lockout Stations');
+    const shi=sg.findIndex(r=>r.some(c=>String(c).trim()==='Station ID'));
+    const sc=sg[shi].map(c=>String(c).trim());
+    for(let i=shi+1;i<sg.length;i++){const r=sg[i];const id=String(r[col(sc,'Station ID')]||'').trim();
+      if(!id||/\s/.test(id)||id.length>24)continue;
+      stations.push({id,loc:r[col(sc,'Location / Description')],audit:toDate(r[col(sc,'Last Audit Date')])});}
+  }catch(e){}
+
+
+  // --- safety walks + findings (optional sheets)
+  let walks=[], finds=[];
+  try{const wg=grid(wb,'Safety Walks');
+    const whi=wg.findIndex(r=>r.some(c=>String(c).trim()==='Walk ID'));
+    const wc=wg[whi].map(c=>String(c).trim());
+    for(let i=whi+1;i<wg.length;i++){const r=wg[i];const id=String(r[col(wc,'Walk ID')]||'').trim();
+      if(!id||/\s/.test(id))continue;
+      walks.push({id,date:toDate(r[col(wc,'Date')]),auditor:r[col(wc,'Auditor(s)')],
+        area:r[col(wc,'Area / Route')],shift:r[col(wc,'Shift')],
+        checked:Number(r[col(wc,'Items Checked')])||0});}
+  }catch(e){}
+  try{const fg=grid(wb,'Safety Walk Findings');
+    const fhi=fg.findIndex(r=>r.some(c=>String(c).trim()==='Finding #'));
+    const fc=fg[fhi].map(c=>String(c).trim());
+    for(let i=fhi+1;i<fg.length;i++){const r=fg[i];const id=String(r[col(fc,'Finding #')]||'').trim();
+      if(!id||/\s/.test(id))continue;
+      finds.push({id,walk:String(r[col(fc,'Walk ID')]||'').trim(),
+        date:toDate(r[col(fc,'Date Found')]),area:r[col(fc,'Area / Machine')],
+        cat:String(r[col(fc,'Category')]||'').trim()||'Other',
+        desc:String(r[col(fc,'Description of hazard')]||'').trim(),
+        cond:r[col(fc,'Condition or Act')],
+        risk:String(r[col(fc,'Risk (A/B/C)')]||'').trim().toUpperCase(),
+        action:r[col(fc,'Corrective action')],
+        champ:String(r[col(fc,'Champion')]||'').trim(),
+        status:String(r[col(fc,'Status')]||'Open').trim(),
+        due:toDate(r[col(fc,'Due Date')]),closed:toDate(r[col(fc,'Date Closed')])});}
+  }catch(e){}
+
+
+
+  // --- per-person requirement exceptions (optional sheet)
+  const exc={};
+  try{const xg=grid(wb,'Requirement Exceptions');
+    const xhi=xg.findIndex(r=>r.some(c=>String(c).trim()==='Emp ID'));
+    const xc=xg[xhi].map(c=>String(c).trim());
+    for(let i=xhi+1;i<xg.length;i++){const r=xg[i];
+      const eid=String(r[col(xc,'Emp ID')]||'').trim();
+      const cid=String(r[col(xc,'Course ID')]||'').trim();
+      const req=String(r[col(xc,'Required?')]||'').trim().toLowerCase();
+      if(!eid||!cid||!req)continue;
+      exc[String(Number(eid))+'|'+cid]=req;}
+  }catch(e){}
+
+  // --- SOS reports (FM428), optional sheet
+  let sos=[];
+  try{const og=grid(wb,'SOS Reports');
+    const ohi=og.findIndex(r=>r.some(c=>String(c).trim()==='SOS #'));
+    const oc=og[ohi].map(c=>String(c).trim());
+    for(let i=ohi+1;i<og.length;i++){const r=og[i];const id=String(r[col(oc,'SOS #')]||'').trim();
+      if(!id||/\s/.test(id))continue;
+      sos.push({id,date:toDate(r[col(oc,'Report Date')]),
+        by:String(r[col(oc,'Reported By (as written)')]||'').trim(),
+        empId:String(r[col(oc,'Emp ID')]||'').trim(),
+        dept:r[col(oc,'Department')],area:String(r[col(oc,'Area')]||'').trim(),
+        cat:String(r[col(oc,'Hazard Category')]||'').trim(),
+        sev:String(r[col(oc,'Severity')]||'').trim(),
+        typ:String(r[col(oc,'Situation Type')]||'').trim(),
+        desc:String(r[col(oc,'Description of unsafe situation')]||'').trim(),
+        status:String(r[col(oc,'Status')]||'').trim(),
+        pri:String(r[col(oc,'Priority')]||'').trim(),
+        target:toDate(r[col(oc,'Target Completion')]),
+        rev:String(r[col(oc,'Reviewed By')]||'').trim(),
+        empSig:toDate(r[col(oc,'Employee Signed')]),
+        supSig:toDate(r[col(oc,'Supervisor Signed')]),
+        link:String(r[col(oc,'Related Walk Finding')]||'').trim()});}
+  }catch(e){}
+
+  return{employees,courses,req,latest,history,locks,stations,walks,finds,imp,sos,exc};
+}
+
+
+const RISK_DAYS={A:0,B:7,C:30};
+function findMeta(f){
+  const t=today();
+  const target=(f.date&&RISK_DAYS[f.risk]!=null)?new Date(f.date.getTime()+RISK_DAYS[f.risk]*864e5):null;
+  const eff=f.due||target;
+  const open=String(f.status).toLowerCase()!=='closed';
+  const overdue=open&&eff&&eff<t;
+  const end=open?t:(f.closed||t);
+  const badDates=!open&&f.closed&&f.date&&f.closed<f.date;
+  const daysOpen=badDates?'CHECK DATES':(f.date?Math.max(0,Math.round((end-f.date)/864e5)):null);
+  return {target,eff,open,overdue,daysOpen};
+}
+function build(win){
+  const t=today(),rows=[];
+  DATA.employees.forEach(e=>{
+    if(String(e.active).toLowerCase()==='no')return;
+    DATA.courses.forEach(c=>{
+      const roleKnown=Object.prototype.hasOwnProperty.call(DATA.req,e.role);
+      const ov=(DATA.exc||{})[String(Number(e.id))+'|'+c.id];   // per-person exception wins
+      const required=ov?ov==='yes':(roleKnown?!!(DATA.req[e.role]||{})[c.id]:null);
+      const byException=!!ov;
+      const last=DATA.latest[e.id+'|'+c.id]||null;
+      const oneTime=!(c.months>0);                       // interval 0 = never expires
+      const exp=(last&&!oneTime)?addMonths(last,c.months):null;
+      const days=exp?Math.round((exp-t)/864e5):null;
+      let st;
+      if(!roleKnown&&!byException)st='CHECK ROLE';
+      else if(!required)st='N/A';
+      else if(!last)st='MISSING';
+      else if(oneTime)st='CURRENT';
+      else if(days<0)st='EXPIRED';
+      else if(days<=win)st='DUE SOON';
+      else st='CURRENT';
+      rows.push({e,c,required,last,exp,days,st,oneTime,byException});});});
+  return rows;
+}
+
+function fillDepts(){
+  const ds=[...new Set(DATA.employees.map(e=>e.dept).filter(Boolean))].sort();
+  $('fdept').innerHTML='<option>All</option>'+ds.map(d=>'<option>'+esc(d)+'</option>').join('');
+}
+
+function render(){
+  const win=Math.max(0,Number($('fwin').value)||0);
+  const all=build(win);
+  const dept=$('fdept').value,stat=$('fstat').value,q=$('fq').value.trim().toLowerCase();
+
+  // headline uses every required assignment, not the filtered view
+  const req=all.filter(r=>r.st!=='N/A'&&r.st!=='CHECK ROLE');
+  const ok=req.filter(r=>r.st==='CURRENT'||r.st==='DUE SOON').length;
+  const pct=req.length?ok/req.length:0;
+  $('pct').textContent=req.length?(pct*100).toFixed(1)+'%':'—';
+  $('den').textContent=ok+' of '+req.length+' required assignments in date';
+  $('gfill').style.width=(pct*100).toFixed(1)+'%';
+  const short=req.length-ok;
+  $('gshort').textContent=short?short+' TO CLOSE':'CLEAR';
+  const cnt=s=>all.filter(r=>r.st===s).length;
+  $('kCur').textContent=cnt('CURRENT');$('kDue').textContent=cnt('DUE SOON');
+  $('kExp').textContent=cnt('EXPIRED');$('kMis').textContent=cnt('MISSING');
+
+  // alerts
+  const a=[];
+  const cr=all.filter(r=>r.st==='CHECK ROLE');
+  if(cr.length){const names=[...new Set(cr.map(r=>r.e.name))];
+    a.push('<div class="alert"><strong>'+names.length+' employee'+(names.length>1?'s have':' has')+
+      ' a Role that is not on the Requirements sheet</strong> — '+esc(names.join('; '))+
+      '. They are excluded from compliance until the Role text matches exactly.</div>');}
+  const im=DATA.imp||{};
+  const un=Object.keys(im.unmatched||{});
+  if(un.length)a.push('<div class="alert"><strong>'+un.length+' course title'+(un.length>1?'s in':' in')+
+    ' the SafetyPlus export '+(un.length>1?'do':'does')+" not match your Courses sheet</strong> \u2014 "+
+    esc(un.slice(0,6).join('; '))+(un.length>6?'; \u2026':'')+
+    '. Those completions are being ignored. Add each one to the Courses tab, copying the title exactly.</div>');
+  if(im.noId)a.push('<div class="alert"><strong>'+im.noId+' export row'+(im.noId>1?'s have':' has')+
+    ' no employee number</strong> \u2014 SafetyPlus is showing initials instead of an ID, so those records cannot be matched to anyone.</div>');
+  const OS=(DATA.sos||[]).map(o=>Object.assign({},o,sosMeta(o)));
+  const noP2=OS.filter(o=>!o.page2), inj=OS.filter(o=>/injury/i.test(o.typ)&&!o.page2);
+  if(inj.length)a.push('<div class="alert"><strong>'+inj.length+' SOS report'+(inj.length>1?'s recording an injury have':' recording an injury has')+
+    ' no corrective action plan</strong> \u2014 '+esc(inj.map(o=>o.id+' ('+o.by+')').join('; '))+
+    '. An injury with no documented action and no signatures is the weakest record in the file.</div>');
+  else if(noP2.length)a.push('<div class="alert"><strong>'+noP2.length+' SOS report'+(noP2.length>1?'s are':' is')+
+    ' missing page 2</strong> \u2014 '+esc(noP2.map(o=>o.id).join('; '))+'. No corrective action plan or signatures on file.</div>');
+  const badLock=lockFlags(all).filter(l=>l.flag);
+  if(badLock.length)a.push('<div class="alert"><strong>'+badLock.length+
+    ' lock'+(badLock.length>1?'s are':' is')+' assigned to someone without current LOTO training</strong> — '+
+    esc(badLock.map(l=>l.id+' ('+l.who+')').join('; '))+'. Pull the lock or schedule the training.</div>');
+  if(!a.length&&req.length)a.push('<div class="alert ok"><strong>No structural problems found.</strong> '+
+    'Every active employee maps to a role, and every issued lock is held by someone with current LOTO training.</div>');
+  $('alerts').innerHTML=a.join('');
+
+  // by department
+  const ds=[...new Set(all.map(r=>r.e.dept).filter(Boolean))].sort();
+  $('depts').innerHTML=ds.map(d=>{
+    const rs=all.filter(r=>r.e.dept===d&&r.st!=='N/A'&&r.st!=='CHECK ROLE');
+    const g=rs.filter(r=>r.st==='CURRENT'||r.st==='DUE SOON').length;
+    const p=rs.length?g/rs.length:0;
+    const heads=new Set(all.filter(r=>r.e.dept===d).map(r=>r.e.id)).size;
+    return '<div class="drow"><div><div class="dname">'+esc(d)+'</div>'+
+      '<div class="dmeta">'+heads+' active · '+g+'/'+rs.length+' in date</div>'+
+      '<div class="dbar"><i style="width:'+(p*100).toFixed(1)+'%;background:'+
+        (p>=.95?'var(--safety)':p>=.85?'var(--caution)':'var(--danger)')+'"></i></div></div>'+
+      '<div class="dpct" style="color:'+(p>=.95?'var(--safety)':p>=.85?'var(--amber)':'var(--danger)')+'">'+
+        (rs.length?(p*100).toFixed(0)+'%':'—')+'</div></div>';
+  }).join('')||'<p style="color:var(--ink2)">No departments set on the Employees sheet yet.</p>';
+
+  // action list: expired first, then missing, then soonest due
+  const act=all.filter(r=>['EXPIRED','MISSING','DUE SOON'].includes(r.st))
+    .sort((x,y)=>{const o={EXPIRED:0,MISSING:1,'DUE SOON':2};
+      return o[x.st]-o[y.st]||(x.days??9e9)-(y.days??9e9)||x.e.name.localeCompare(y.e.name);});
+  $('action').innerHTML=act.length?act.map(r=>'<tr><td class="nowrap">'+esc(r.e.name)+'</td><td>'+esc(r.c.name)+
+    '</td><td class="mono nowrap">'+(r.st==='MISSING'?'never':expTxt(r))+'</td><td><span class="chip '+S[r.st]+'">'+
+    r.st+'</span></td></tr>').join(''):
+    '<tr><td colspan="4" style="color:var(--ink2);padding:20px">Nothing outstanding. Everyone is in date.</td></tr>';
+  $('actn').textContent=act.length?act.length+' item'+(act.length>1?'s':'')+' to close':'all clear';
+
+  renderMatrix(all,win);
+  renderLocks(all);
+  renderFindings();
+  renderSOS();
+
+  // detail table, filtered
+  let det=all.filter(r=>{
+    if(dept!=='All'&&r.e.dept!==dept)return false;
+    if(stat==='Action needed'&&!['EXPIRED','MISSING'].includes(r.st))return false;
+    if(stat!=='All'&&stat!=='Action needed'&&r.st!==stat.toUpperCase())return false;
+    if(q&&!(String(r.e.name).toLowerCase().includes(q)||String(r.c.name).toLowerCase().includes(q)))return false;
+    return true;});
+  det.sort((x,y)=>x.e.name.localeCompare(y.e.name)||x.c.id.localeCompare(y.c.id));
+  $('detail').innerHTML=det.length?det.map(r=>'<tr><td class="mono">'+esc(r.e.id)+'</td><td class="nowrap">'+
+    esc(r.e.name)+'</td><td>'+esc(r.e.dept)+'</td><td>'+esc(r.e.role)+'</td><td>'+esc(r.c.name)+
+    '</td><td class="mono nowrap">'+fmt(r.last)+'</td><td class="mono nowrap">'+expTxt(r)+
+    '</td><td><span class="chip '+S[r.st]+'">'+r.st+'</span>'+
+    (r.byException?' <span class="chip NA">exception</span>':'')+'</td></tr>').join(''):
+    '<tr><td colspan="8" style="color:var(--ink2);padding:20px">No records match those filters.</td></tr>';
+  $('detn').textContent='Showing '+det.length+' of '+all.length+' employee-course records. '+
+    'Warning window '+win+' days.'+
+    (Object.keys(DATA.exc||{}).length?'  '+Object.keys(DATA.exc).length+' individual requirement exception(s) applied.':'')+
+    ((DATA.imp&&DATA.imp.rows)?
+    '  SP Import: '+DATA.imp.rows+' export rows, '+DATA.imp.imported+' matched to your roster, '+
+    DATA.imp.offRoster+' off roster.':'');
+}
+
+
+
+function sosMeta(o){
+  const t=today();
+  const closed=/^(completed|closed)/i.test(o.status);
+  const outstanding=!closed;
+  const page2=!!(o.rev&&o.empSig&&o.supSig);
+  const noTarget=outstanding&&!o.target;
+  const overdue=outstanding&&o.target&&o.target<t;
+  return {closed,outstanding,page2,noTarget,overdue};
+}
+const SEV_ORDER=['High - Immediate danger','Medium - Moderate risk','Low - Minor risk'];
+const SEV_CLASS={'High - Immediate danger':'A','Medium - Moderate risk':'B','Low - Minor risk':'C'};
+function renderFindings(){
+  const F=(DATA.finds||[]).map(f=>Object.assign({},f,findMeta(f)));
+  const wrap=$('fdwrap'), empty=$('fdempty');
+  if(!F.length){wrap.style.display='none';empty.style.display='';$('fdn').textContent='';return;}
+  wrap.style.display='';empty.style.display='none';
+  const open=F.filter(f=>f.open), closed=F.filter(f=>!f.open), over=F.filter(f=>f.overdue);
+  $('fWalks').textContent=(DATA.walks||[]).length;
+  $('fTot').textContent=F.length;
+  $('fOpen').textContent=open.length;
+  $('fClosed').textContent=closed.length;
+  $('fOver').textContent=over.length;
+  const rate=F.length?closed.length/F.length:0;
+  $('fRate').textContent=(rate*100).toFixed(0)+'%';
+  $('fRateBar').style.width=(rate*100).toFixed(1)+'%';
+  $('fRateSub').textContent=closed.length+' of '+F.length+' closed'+(over.length?' \u00b7 '+over.length+' past target':'');
+  $('fdn').textContent=F.length+' findings across '+((DATA.walks||[]).length||1)+' walk'+(((DATA.walks||[]).length||1)>1?'s':'');
+
+  // ---- by risk
+  const risks=['A','B','C'].filter(r=>F.some(f=>f.risk===r));
+  const unranked=F.filter(f=>!['A','B','C'].includes(f.risk));
+  const rmax=Math.max(1,...['A','B','C'].map(r=>F.filter(f=>f.risk===r).length),unranked.length);
+  const label={A:'A \u2014 fix now',B:'B \u2014 7 days',C:'C \u2014 30 days'};
+  let rh='<h3>By risk rank</h3>';
+  risks.concat(unranked.length?['?']:[]).forEach(r=>{
+    const set=r==='?'?unranked:F.filter(f=>f.risk===r);
+    const c=set.filter(f=>!f.open).length, o=set.filter(f=>f.open&&!f.overdue).length, ov=set.filter(f=>f.overdue).length;
+    const w=v=>(v/rmax*100).toFixed(1)+'%';
+    rh+='<div class="crow"><div class="clab"><b>'+(r==='?'?'Not yet ranked':label[r])+'</b>'+
+        '<span>'+set.length+' total \u00b7 '+c+' closed</span></div><div class="hbar">'+
+        (c?'<i class="seg-closed" style="width:'+w(c)+'"></i>':'')+
+        (o?'<i class="seg-'+(r==='?'?'none':r)+'" style="width:'+w(o)+'"></i>':'')+
+        (ov?'<i class="seg-over" style="width:'+w(ov)+'"></i>':'')+
+        '</div></div>';});
+  rh+='<div class="rlegend"><span><b class="seg-closed"></b>Closed</span>'+
+      '<span><b class="seg-A"></b>Open A</span><span><b class="seg-B"></b>Open B</span>'+
+      '<span><b class="seg-C"></b>Open C</span><span><b class="seg-over"></b>Past target</span></div>';
+  $('riskChart').innerHTML=rh;
+
+  // ---- by category
+  const cats={};
+  F.forEach(f=>{(cats[f.cat]=cats[f.cat]||[]).push(f);});
+  const order=Object.entries(cats).sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0]));
+  const cmax=Math.max(1,...order.map(([,v])=>v.length));
+  let ch='<h3>By category</h3>';
+  order.forEach(([name,set])=>{
+    const c=set.filter(f=>!f.open).length, o=set.filter(f=>f.open&&!f.overdue).length, ov=set.filter(f=>f.overdue).length;
+    const w=v=>(v/cmax*100).toFixed(1)+'%';
+    ch+='<div class="crow"><div class="clab"><b>'+esc(name)+'</b><span>'+set.length+'</span></div>'+
+        '<div class="hbar">'+(c?'<i class="seg-closed" style="width:'+w(c)+'"></i>':'')+
+        (o?'<i class="seg-none" style="width:'+w(o)+'"></i>':'')+
+        (ov?'<i class="seg-over" style="width:'+w(ov)+'"></i>':'')+'</div></div>';});
+  $('catChart').innerHTML=ch;
+
+  // ---- table: open first, most urgent at the top
+  const sorted=F.slice().sort((a,b)=>{
+    if(a.open!==b.open)return a.open?-1:1;
+    if(a.overdue!==b.overdue)return a.overdue?-1:1;
+    const ra={A:0,B:1,C:2}, x=ra[a.risk]==null?9:ra[a.risk], y=ra[b.risk]==null?9:ra[b.risk];
+    return x-y||((a.eff?a.eff.getTime():9e15)-(b.eff?b.eff.getTime():9e15));});
+  $('findTbl').innerHTML=sorted.map(f=>{
+    const chip=f.overdue?'<span class="od">Overdue</span>':
+      '<span class="chip '+(f.open?'DUE':'CURRENT')+'">'+(f.open?'Open':'Closed')+'</span>';
+    return '<tr><td class="mono nowrap">'+esc(f.id)+'</td><td>'+esc(f.cat)+'</td><td>'+esc(f.desc)+
+      '</td><td style="text-align:center"><b>'+esc(f.risk||'\u2014')+'</b></td><td class="nowrap">'+
+      (f.champ?esc(f.champ):'<span style="color:var(--danger)">unassigned</span>')+
+      '</td><td class="mono nowrap">'+(f.eff?fmt(f.eff)+(f.due?'':' (target)'):'\u2014')+
+      '</td><td class="mono" style="text-align:center">'+(f.daysOpen==null?'\u2014':(f.daysOpen==='CHECK DATES'?'<span class="od">Check dates</span>':f.daysOpen))+
+      '</td><td>'+chip+'</td></tr>';}).join('');
+  const noChamp=open.filter(f=>!f.champ).length;
+  $('fdfoot').textContent='Dates shown as (target) are derived from the risk rank, not yet agreed: A same day, B +7 days, C +30 days.'+
+    (noChamp?' '+noChamp+' open finding'+(noChamp>1?'s have':' has')+' no champion assigned.':'');
+}
+
+function renderSOS(){
+  const O=(DATA.sos||[]).map(o=>Object.assign({},o,sosMeta(o)));
+  if(!O.length){$('soswrap').style.display='none';$('sosempty').style.display='';$('sosn').textContent='';return;}
+  $('soswrap').style.display='';$('sosempty').style.display='none';
+  const out=O.filter(o=>o.outstanding), closed=O.filter(o=>o.closed);
+  $('sTot').textContent=O.length;
+  $('sOut').textContent=out.length;
+  $('sOver').textContent=O.filter(o=>o.overdue).length;
+  $('sInj').textContent=O.filter(o=>/injury/i.test(o.typ)).length;
+  $('sGap').textContent=O.filter(o=>!o.page2).length;
+  const rate=O.length?closed.length/O.length:0;
+  $('sRate').textContent=(rate*100).toFixed(0)+'%';
+  $('sRateBar').style.width=(rate*100).toFixed(1)+'%';
+  $('sRateSub').textContent=closed.length+' of '+O.length+' closed out';
+  const span=O.filter(o=>o.date).map(o=>o.date).sort((a,b)=>a-b);
+  $('sosn').textContent=O.length+' reports'+(span.length?' \u00b7 '+fmt(span[0])+' to '+fmt(span[span.length-1]):'');
+
+  const bar=(rows,title,cls)=>{
+    const mx=Math.max(1,...rows.map(([,v])=>v.length));
+    let h='<h3>'+title+'</h3>';
+    rows.forEach(([name,set])=>{
+      const c=set.filter(o=>o.closed).length, ou=set.filter(o=>o.outstanding&&!o.overdue).length,
+            ov=set.filter(o=>o.overdue).length;
+      const w=v=>(v/mx*100).toFixed(1)+'%';
+      h+='<div class="crow"><div class="clab"><b>'+esc(name)+'</b><span>'+set.length+'</span></div><div class="hbar">'+
+         (c?'<i class="seg-closed" style="width:'+w(c)+'"></i>':'')+
+         (ou?'<i class="seg-'+(cls(name)||'none')+'" style="width:'+w(ou)+'"></i>':'')+
+         (ov?'<i class="seg-over" style="width:'+w(ov)+'"></i>':'')+'</div></div>';});
+    return h;};
+
+  const sev=SEV_ORDER.filter(sv=>O.some(o=>o.sev===sv)).map(sv=>[sv,O.filter(o=>o.sev===sv)]);
+  $('sevChart').innerHTML=bar(sev,'By severity',n=>SEV_CLASS[n])+
+    '<div class="rlegend"><span><b class="seg-closed"></b>Closed</span>'+
+    '<span><b class="seg-A"></b>Open high</span><span><b class="seg-B"></b>Open medium</span>'+
+    '<span><b class="seg-C"></b>Open low</span><span><b class="seg-over"></b>Overdue</span></div>';
+
+  const types={};O.forEach(o=>{(types[o.typ||'not recorded']=types[o.typ||'not recorded']||[]).push(o);});
+  $('typChart').innerHTML=bar(Object.entries(types).sort((a,b)=>b[1].length-a[1].length),
+    'By situation type',n=>/injury/i.test(n)?'A':'none');
+
+  const mon={};
+  O.filter(o=>o.date).forEach(o=>{const k=o.date.getFullYear()+'-'+String(o.date.getMonth()+1).padStart(2,'0');
+    (mon[k]=mon[k]||[]).push(o);});
+  const keys=Object.keys(mon).sort();
+  if(keys.length){
+    const first=keys[0].split('-'),last=keys[keys.length-1].split('-');
+    const all=[];let y=+first[0],m=+first[1];
+    while(y<+last[0]||(y==+last[0]&&m<=+last[1])){
+      all.push(y+'-'+String(m).padStart(2,'0'));m++;if(m>12){m=1;y++;}}
+    const mx=Math.max(1,...all.map(k=>(mon[k]||[]).length));
+    const nm=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let h='<h3>Reports per month</h3>';
+    all.forEach(k=>{const set=mon[k]||[];const lbl=nm[+k.split('-')[1]-1]+' '+k.split('-')[0];
+      h+='<div class="crow"><div class="clab"><b>'+lbl+'</b><span>'+(set.length||'none')+'</span></div>'+
+         '<div class="hbar">'+(set.length?'<i class="seg-C" style="width:'+(set.length/mx*100).toFixed(1)+'%"></i>':'')+'</div></div>';});
+    $('monChart').innerHTML=h;}
+
+  const sorted=O.slice().sort((a,b)=>{
+    if(a.outstanding!==b.outstanding)return a.outstanding?-1:1;
+    if(a.overdue!==b.overdue)return a.overdue?-1:1;
+    return (b.date?b.date.getTime():0)-(a.date?a.date.getTime():0);});
+  $('sosTbl').innerHTML=sorted.map(o=>{
+    const fl=[];
+    if(o.overdue)fl.push('<span class="od">Overdue</span>');
+    if(o.noTarget)fl.push('<span class="od">No target</span>');
+    if(!o.page2)fl.push('<span class="od">No page 2</span>');
+    if(!o.empId)fl.push('<span class="od">Not on roster</span>');
+    if(o.link)fl.push('<span class="chip CURRENT">'+esc(o.link)+'</span>');
+    const sevCls=/High/i.test(o.sev)?'EXPIRED':/Medium/i.test(o.sev)?'DUE':'CHECK';
+    return '<tr><td class="mono nowrap">'+esc(o.id)+'</td><td class="mono nowrap">'+(o.date?fmt(o.date):'\u2014')+
+      '</td><td class="nowrap">'+esc(o.by)+'</td><td>'+esc(o.area)+
+      '</td><td><span class="chip '+sevCls+'">'+esc((o.sev||'\u2014').split(' - ')[0])+'</span></td><td>'+
+      esc(o.typ||'\u2014')+'</td><td class="mono nowrap">'+(o.target?fmt(o.target):'\u2014')+'</td><td>'+
+      '<span class="chip '+(o.closed?'CURRENT':'DUE')+'">'+esc(o.status||'not set')+'</span></td><td>'+
+      (fl.join(' ')||'')+'</td></tr>';}).join('');
+  $('sosfoot').textContent='Flags: no page 2 means the corrective action plan or a signature is missing. '+
+    'Not on roster means no Emp ID links the reporter to the Employees tab.';
+}
+function renderMatrix(all,win){
+  const emps=[...new Map(all.map(r=>[r.e.id,r.e])).values()].sort((a,b)=>a.name.localeCompare(b.name));
+  const cs=DATA.courses;
+  let h='<table><thead><tr><th class="nm">Employee</th>'+
+    cs.map(c=>'<th class="rot"><div>'+esc(c.name)+'</div></th>').join('')+'</tr></thead><tbody>';
+  emps.forEach(e=>{
+    h+='<tr><td class="nm"><div style="font-weight:600">'+esc(e.name)+
+       '</div><div class="mono" style="font-size:10.5px;color:var(--ink2)">'+esc(e.role||'no role set')+'</div></td>';
+    cs.forEach(c=>{
+      const r=all.find(x=>x.e.id===e.id&&x.c.id===c.id);
+      const st=r?r.st:'N/A';
+      const tip=esc(e.name+' — '+c.name+'\n'+st+
+        (r&&r.last?'\nCompleted '+fmt(r.last)+(r.oneTime?', one-time (no renewal)':', expires '+fmt(r.exp)):''));
+      h+='<td><span class="cellbox c-'+S[st]+'" title="'+tip+'"></span></td>';});
+    h+='</tr>';});
+  $('mx').innerHTML=h+'</tbody></table>';
+}
+
+function lockFlags(all){
+  return (DATA.locks||[]).map(l=>{
+    const e=DATA.employees.find(x=>String(x.id)===String(l.emp));
+    const r=e?all.find(x=>x.e.id===e.id&&x.c.id==='C-04'):null;
+    const okTrain=r&&(r.st==='CURRENT'||r.st==='DUE SOON');
+    const lost=/lost|retired|removed|cut/i.test(l.status||'');
+    return{...l,who:e?e.name:'',assigned:!!e,flag:!!e&&!lost&&!okTrain,lost,trainStatus:r?r.st:'not assessed'};});
+}
+
+function renderLocks(all){
+  const ls=lockFlags(all);
+  $('locks').innerHTML=ls.length?ls.map(l=>{
+    const cls=l.lost?'lost':l.flag?'flag':l.assigned?'assigned':'station';
+    const tip=esc(l.id+' — '+(l.type||'')+'\n'+(l.assigned?'Held by '+l.who+' (LOTO: '+l.trainStatus+')':
+      'In '+(l.station||'station'))+(l.status?'\nStatus: '+l.status:''));
+    return '<div class="lock '+cls+'" title="'+tip+'"><div class="id">'+esc(l.id)+'</div>'+
+      '<div class="who">'+esc(l.assigned?l.who.split(',')[0]:(l.station||'—'))+'</div><div class="st"></div></div>';
+  }).join(''):'<p style="color:var(--ink2)">No locks in the register yet.</p>';
+  const asg=ls.filter(l=>l.assigned).length;
+  $('lockn').textContent=ls.length+' locks · '+asg+' assigned · '+(ls.length-asg)+' in station';
+  const st=DATA.stations||[];
+  $('stations').textContent=st.length?'Stations: '+st.map(s=>s.id+' ('+(s.loc||'location not set')+
+    ', last audited '+(s.audit?fmt(s.audit):'never')+')').join(' · '):'No lockout stations recorded.';
+}
+
+['fdept','fstat','fwin'].forEach(id=>$(id).onchange=()=>DATA&&render());
+$('fq').oninput=()=>DATA&&render();
+
+$('csvf').onclick=()=>{
+  if(!DATA||!(DATA.finds||[]).length)return;
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const rows=DATA.finds.map(f=>{const m=findMeta(f);
+    return [f.id,f.walk,f.date?fmt(f.date):'',f.area,f.cat,f.desc,f.cond,f.risk,f.action,
+            f.champ,f.status,f.due?fmt(f.due):'',m.target?fmt(m.target):'',
+            m.eff?fmt(m.eff):'',m.daysOpen==null?'':m.daysOpen,m.overdue?'OVERDUE':''];});
+  const csv=[['Finding #','Walk ID','Date Found','Area / Machine','Category','Description','Condition or Act',
+    'Risk','Corrective action','Champion','Status','Due Date','Target Date','Effective Due','Days Open','Overdue']]
+    .concat(rows).map(r=>r.map(q).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='Safety_Walk_Findings_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(a.href);
+};
+
+// ---- optional auto-load: if a workbook sits beside this page, open it on load ----
+// Leave WORKBOOK_URL null for the file-picker behaviour (nothing sensitive is published).
+// Set it to a filename only on a host where access is controlled.
+const WORKBOOK_URL = null;   // e.g. './Safety_Compliance_Master.xlsx'
+
+async function tryAutoLoad(){
+  if(!WORKBOOK_URL||typeof XLSX==='undefined')return;
+  try{
+    const res=await fetch(WORKBOOK_URL,{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const buf=await res.arrayBuffer();
+    DATA=parse(XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true}));
+    const name=WORKBOOK_URL.split('/').pop();
+    $('mastsub').textContent='Atomic Industries \u00b7 Shelby Township, MI \u00b7 '+name;
+    $('asof').textContent='Report generated '+fmt(today());
+    $('empty').style.display='none';$('app').style.display='';
+    fillDepts();render();
+  }catch(err){
+    console.warn('Auto-load skipped:',err.message);   // picker stays available
+  }
+}
+window.addEventListener('load',tryAutoLoad);
+
+$('theme').onclick=()=>{
+  const el=document.documentElement, toLight=el.getAttribute('data-theme')!=='light';
+  if(toLight)el.setAttribute('data-theme','light'); else el.removeAttribute('data-theme');
+  $('theme').textContent=toLight?'Dark mode':'Light mode';
+  $('theme').setAttribute('aria-pressed',toLight?'true':'false');
+};
+$('print').onclick=()=>window.print();
+$('csv').onclick=()=>{
+  if(!DATA)return;
+  const win=Math.max(0,Number($('fwin').value)||0);
+  const rows=build(win).filter(r=>['EXPIRED','MISSING','DUE SOON'].includes(r.st));
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const csv=[['Emp ID','Employee','Department','Role','Course ID','Course','Last Completed','Expires','Days','Status']]
+    .concat(rows.map(r=>[r.e.id,r.e.name,r.e.dept,r.e.role,r.c.id,r.c.name,
+      r.last?fmt(r.last):'',r.oneTime?'one-time':(r.exp?fmt(r.exp):''),r.days==null?'':r.days,r.st]))
+    .map(r=>r.map(q).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='Safety_Action_List_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(a.href);
+};
+</script>
