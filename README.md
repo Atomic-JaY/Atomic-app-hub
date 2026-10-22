@@ -10,6 +10,40 @@ nothing server-side — served straight off GitHub Pages.
 | App | What it does |
 | --- | --- |
 | Life Safety PM Tracker (`index.html`) | Interactive plant map of 21 fire extinguishers, 23 emergency lights and 4 eye wash stations, with the PM interval each one owes and photos of every unit. |
+| SDS Library (`sds/`) | Every Safety Data Sheet in the plant, searchable from a phone. Replaces SDS Manager. Prints container labels, the Right to Know notice, the HazCom chemical inventory and the SDS station QR poster. |
+
+## SDS Library
+
+**Live:** https://atomic-jay.github.io/Atomic-app-hub/sds/
+
+Works the same way as the PM tracker: the page reads `sds/SDS-Register.xlsx` out of this
+repo, and each row points at a PDF in `sds/pdf/`. No accounts, no per-chemical fees.
+
+| Page | Use |
+| --- | --- |
+| Library | Search by product, supplier or hazard; filter by area, signal word or pictogram. Each SDS shows pictograms, hazards, PPE, first aid, fire and spill steps, and opens the full PDF. |
+| Container label | From any SDS: a 4×6 or 4×2 workplace label for spray bottles and pails (1910.1200(f)(6)). |
+| New & revised | SDSs added in the last 30 days, laid out as the MIOSHA Right to Know notice. Print and post within 5 working days. |
+| Inventory | The hazardous chemical list for the written HazCom program, grouped by area. |
+| SDS poster | Letter-size QR poster for each SDS station. |
+| Needs review | Everything with a Review Flag in the register: outdated, foreign-language, incomplete or duplicate SDSs. |
+
+### Adding a chemical
+
+1. Add a row to the `Register` tab of `SDS-Register.xlsx` (the workbook's first tab walks through it).
+   Give it a new ID and set `PDF File` to the file name, e.g. `4000001.pdf`.
+2. Upload the PDF to `sds/pdf/` and commit.
+3. Upload the workbook to `sds/` over the old one and commit. The site updates in about a minute.
+
+To retire a product, set `Status` to `Archived`. Don't delete the row or the PDF.
+
+### Where the data came from
+
+The 98 SDSs and their summaries were exported from SDS Manager on 10/22/2026. Signal
+words, hazard codes and phone numbers that SDS Manager missed were checked against the
+PDFs. The PDF is always the official SDS; the summaries are a quick reference.
+
+Keep a printed or USB backup at the SDS station for when the network is down.
 
 ## Life Safety PM Tracker
 
@@ -66,7 +100,7 @@ Findings, not bugs, and both need a person to decide:
 
 ## Adding more apps later
 
-Put each new app in its own folder with its own `index.html` — `press-checks/`,
-`tooling/`, whatever — and it publishes at `…github.io/Atomic-app-hub/press-checks/`
+Put each new app in its own folder with its own `index.html` — like `sds/`, or
+`press-checks/`, `tooling/`, whatever — and it publishes at `…github.io/Atomic-app-hub/press-checks/`
 with no other setup. This top-level `index.html` stays the life safety tracker until you
 decide to make it a landing page instead.

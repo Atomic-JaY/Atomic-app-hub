@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDS Library — Atomic Industries</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f2a44'/%3E%3Cpath d='M16 5 27 16 16 27 5 16z' fill='%23fff' stroke='%23d0102b' stroke-width='3'/%3E%3C/svg%3E">
+<script src="xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#141a26; --muted:#5b6474; --line:#d9dde4; --bg:#f4f5f7; --card:#fff;
+  --navy:#1f2a44; --navy-2:#2b3a5e; --red:#c8102e; --amber:#f2a900; --green:#1e7a46; --focus:#2f6fed;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --ink:#e8ebf1; --muted:#9aa3b2; --line:#2c3445; --bg:#0f141d; --card:#171e2a; }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.45}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+header.top{background:var(--navy);color:#fff;position:sticky;top:0;z-index:10}
+.top-in{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff;margin-right:auto}
+.brand svg{width:30px;height:30px;flex:none}
+.brand b{font-size:17px;letter-spacing:.2px;display:block;line-height:1.1}
+.brand small{display:block;font-size:12px;opacity:.75}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+nav.tabs a{color:#fff;text-decoration:none;font-size:14px;padding:7px 11px;border-radius:7px;opacity:.85;white-space:nowrap}
+nav.tabs a:hover{background:var(--navy-2);opacity:1}
+nav.tabs a.on{background:#fff;color:var(--navy);opacity:1;font-weight:600}
+nav.tabs .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--red);color:#fff;font-size:12px;text-align:center;font-weight:700}
+
+main{max-width:1100px;margin:0 auto;padding:16px}
+.status{padding:28px 0;color:var(--muted);text-align:center}
+.status input[type=file]{margin-top:12px}
+
+/* library */
+.searchbar{position:relative;margin:4px 0 12px}
+.searchbar input{width:100%;font-size:18px;padding:14px 14px 14px 46px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+.searchbar input:focus{border-color:var(--navy-2);outline:none}
+.searchbar svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip.sig-Danger.on{background:var(--red);border-color:var(--red)}
+.chip.sig-Warning.on{background:var(--amber);border-color:var(--amber);color:#111}
+.picks{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+.pick{border:1.5px solid var(--line);background:var(--card);border-radius:8px;padding:3px;cursor:pointer;line-height:0}
+.pick img{width:34px;height:34px}
+.pick.on{border-color:var(--navy);box-shadow:0 0 0 2px var(--navy)}
+.meta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:14px;margin:10px 2px 8px;gap:10px;flex-wrap:wrap}
+.linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0;font-size:14px}
+
+.list{display:grid;gap:8px}
+.row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-decoration:none;min-height:64px}
+.row:hover{border-color:var(--navy-2)}
+.row .txt{flex:1;min-width:0}
+.row .name{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.row .sub{color:var(--muted);font-size:13.5px}
+.row .pics{display:flex;gap:2px;flex:none}
+.row .pics img{width:30px;height:30px}
+.row.archived{opacity:.6}
+.badge{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.b-Danger{background:var(--red);color:#fff}
+.b-Warning{background:var(--amber);color:#111}
+.b-None{border:1px solid var(--line);color:var(--muted)}
+.b-flag{background:#fff1c7;color:#6b4a00;border:1px solid #e6c766}
+.b-new{background:#dff3e6;color:#145c32;border:1px solid #9fd3b2}
+.b-arch{background:#e7e9ee;color:#4a5263}
+
+/* detail */
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--muted);font-size:15px;margin-bottom:10px}
+.dhead{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.dhead h1{font-size:24px;line-height:1.2;margin:4px 0 4px;overflow-wrap:anywhere}
+.dhead .sup{color:var(--muted)}
+.dhead .pics{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px}
+.dhead .pics figure{margin:0;text-align:center;width:84px}
+.dhead .pics img{width:72px;height:72px}
+.dhead .pics figcaption{font-size:11.5px;color:var(--muted);line-height:1.2}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);text-decoration:none;font-weight:600;cursor:pointer;font-size:15px}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn svg{width:18px;height:18px}
+.flag{margin-top:12px;background:#fff6d8;border:1px solid #e6c766;color:#5a3e00;border-radius:10px;padding:10px 12px;font-size:14.5px}
+.note{margin-top:12px;background:#eaf1ff;border:1px solid #b7cbf5;color:#1d3566;border-radius:10px;padding:10px 12px;font-size:14.5px}
+@media (prefers-color-scheme: dark){ .flag{background:#3a3014;color:#f2dc9b;border-color:#6b5a22} .note{background:#18264a;color:#c9d7f7;border-color:#2e4580} .b-flag{background:#3a3014;color:#f2dc9b;border-color:#6b5a22} .b-new{background:#173a26;color:#a8e2bf;border-color:#2b6b45} .b-arch{background:#2a3140;color:#b8c0cf} }
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;margin-top:14px;font-size:14px}
+.facts div span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:10px;overflow:hidden}
+.sec > summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:10px}
+.sec > summary::-webkit-details-marker{display:none}
+.sec > summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+.sec[open] > summary::after{transform:rotate(-135deg)}
+.sec .body{padding:0 16px 14px}
+.sec ul{margin:0;padding-left:20px}
+.sec li{margin:4px 0}
+.kv{margin:0}
+.kv p{margin:0 0 8px}
+.kv b{font-weight:600}
+.empty{color:var(--muted);font-style:italic}
+.ppe{display:flex;flex-wrap:wrap;gap:6px}
+.ppe span{background:#e9eef8;color:#1f2a44;border-radius:8px;padding:5px 10px;font-size:14px}
+@media (prefers-color-scheme: dark){ .ppe span{background:#24314f;color:#dbe4f7} }
+.disclaim{color:var(--muted);font-size:13px;margin:14px 2px}
+
+/* page sheets (notice, poster, inventory, review) */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar .hint{color:var(--muted);font-size:14px;margin-left:auto}
+.sheet{background:#fff;color:#111;border:1px solid var(--line);border-radius:6px;padding:36px 40px;max-width:8.5in;margin:0 auto}
+.sheet h2{margin:0 0 4px;font-size:26px}
+.sheet .lead{margin:0 0 16px;color:#333}
+.sheet table{width:100%;border-collapse:collapse;font-size:13px}
+.sheet th{text-align:left;background:#1f2a44;color:#fff;padding:6px 8px;font-weight:600}
+.sheet td{border-bottom:1px solid #ccd;padding:6px 8px;vertical-align:top}
+.sheet tr.cat td{background:#eef1f6;font-weight:700;border-bottom:1px solid #b8c0cf}
+.sheet .pics img{width:20px;height:20px;vertical-align:middle}
+.sheet .foot{margin-top:18px;font-size:12px;color:#444}
+.notice-banner{background:#1f2a44;color:#fff;padding:10px 14px;font-weight:800;letter-spacing:1px;font-size:20px;margin:-36px -40px 22px}
+.blank{display:inline-block;border-bottom:1px solid #111;min-width:220px}
+
+.poster{text-align:center;padding:48px 40px}
+.poster .ptop{background:#1f2a44;color:#fff;margin:-48px -40px 28px;padding:22px 20px}
+.poster .ptop h2{font-size:44px;letter-spacing:1px;margin:0}
+.poster .ptop p{margin:6px 0 0;font-size:18px;opacity:.9}
+.poster .qr{width:3.6in;height:3.6in;margin:4px auto 10px;display:block}
+.poster .url{font-family:Consolas,monospace;font-size:16px;word-break:break-all}
+.poster .ghsrow{display:flex;justify-content:center;gap:8px;margin:22px 0 6px;flex-wrap:wrap}
+.poster .ghsrow img{width:58px;height:58px}
+.poster .lines{text-align:left;max-width:5.8in;margin:24px auto 0;font-size:17px}
+.poster .lines p{margin:12px 0}
+
+/* labels */
+.labels{display:flex;flex-direction:column;align-items:center;gap:16px}
+.label{background:#fff;color:#000;border:2px solid #000;display:flex;flex-direction:column;overflow:hidden}
+.label.big{width:4in;height:6in;padding:.18in}
+.label.small{width:4in;height:2in;padding:.1in;flex-direction:row;gap:.1in}
+.label .lname{font-weight:800;font-size:22px;line-height:1.1;overflow-wrap:anywhere}
+.label.small .lname{font-size:15px}
+.label .lsup{font-size:11px;margin-top:2px}
+.label .lsig{font-weight:900;font-size:26px;letter-spacing:2px;margin:.08in 0}
+.label.small .lsig{font-size:15px;margin:2px 0}
+.label .lpics{display:flex;flex-wrap:wrap;gap:4px}
+.label.big .lpics img{width:.95in;height:.95in}
+.label.small .lpics img{width:.62in;height:.62in}
+.label .lh{font-size:12.5px;line-height:1.25;margin:.06in 0 0;padding-left:14px}
+.label.small .lh{font-size:9px;margin:2px 0 0;padding-left:12px}
+.label .lppe{font-size:12px;margin-top:.06in}
+.label .lfoot{margin-top:auto;display:flex;align-items:flex-end;gap:8px;font-size:10px;border-top:1.5px solid #000;padding-top:4px}
+.label .lfoot img{width:.7in;height:.7in}
+.label.small .lfoot{font-size:8.5px}
+.label.small .lfoot img{width:.5in;height:.5in}
+.label.small .lcol{flex:1;min-width:0;display:flex;flex-direction:column}
+
+footer.bot{max-width:1100px;margin:20px auto 30px;padding:0 16px;color:var(--muted);font-size:13px}
+
+@media (max-width:640px){
+  .top-in{gap:8px}
+  nav.tabs{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+  .row .pics img{width:24px;height:24px}
+  .row .pics{max-width:80px;flex-wrap:wrap;justify-content:flex-end}
+  .dhead h1{font-size:21px}
+  .dhead .pics figure{width:70px}
+  .dhead .pics img{width:60px;height:60px}
+  .sheet{padding:20px 16px}
+  .notice-banner{margin:-20px -16px 18px}
+  .poster .ptop{margin:-20px -16px 20px}
+  .poster .ptop h2{font-size:30px}
+  .poster .qr{width:70vw;height:70vw}
+  .sheet table{font-size:12px}
+  .hide-sm{display:none}
+  .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:0 16px 2px}
+  .filters::-webkit-scrollbar{display:none}
+  .facts{grid-template-columns:1fr 1fr}
+}
+
+@media print{
+  header.top,.toolbar,footer.bot,.no-print,.back{display:none!important}
+  body{background:#fff;color:#000}
+  main{padding:0;max-width:none}
+  .sheet{border:none;padding:0;max-width:none}
+  .notice-banner,.poster .ptop{margin:0 0 18px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet th,.sheet tr.cat td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .labels{gap:0;display:block}
+  .label{break-after:page;border-width:2px;margin:0}
+  .label.big{height:5.96in;width:3.98in}
+  .label.small{height:1.96in;width:3.98in}
+  .label:last-child{break-after:auto}
+  .sheet tr{break-inside:avoid}
+}
+</style>
+<style id="pagestyle"></style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 29 16 16 29 3 16z" fill="#fff" stroke="#d0102b" stroke-width="3"/><path d="M16 10v8" stroke="#111" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="22.5" r="1.8" fill="#111"/></svg>
+      <span><b>Safety Data Sheets</b><small>Atomic Industries · Shelby Township</small></span>
+    </a>
+    <nav class="tabs" id="tabs">
+      <a href="#/" data-v="lib">Library</a>
+      <a href="#/new" data-v="new">New &amp; revised<span class="count" id="newCount" hidden></span></a>
+      <a href="#/inventory" data-v="inventory">Inventory</a>
+      <a href="#/poster" data-v="poster">SDS poster</a>
+      <a href="#/review" data-v="review">Needs review<span class="count" id="revCount" hidden></span></a>
+    </nav>
+  </div>
+</header>
+<main id="app"><div class="status">Loading the SDS register…</div></main>
+<footer class="bot" id="foot"></footer>
+
+<script>
+(function(){
+const SITE = 'https://atomic-jay.github.io/Atomic-app-hub/sds/';
+const REGISTER = 'SDS-Register.xlsx';
+const NEW_DAYS = 30;
+const GHS = {
+  GHS01:'Explosive', GHS02:'Flammable', GHS03:'Oxidizer', GHS04:'Gas under pressure', GHS05:'Corrosive',
+  GHS06:'Acute toxicity (severe)', GHS07:'Irritant / harmful', GHS08:'Health hazard', GHS09:'Environment'
+};
+const CAT_ORDER = ['Mold release & mold care','Resins, colorants & purge','Maintenance & shop','Cleaning & janitorial','Water treatment','Office'];
+const catRank = c => { const i = CAT_ORDER.indexOf(c); return i < 0 ? 99 : i; };
+const app = document.getElementById('app');
+let DATA = [], loadedAt = null;
+const state = { q:'', cat:'', sig:'', pics:new Set(), archived:false };
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lines = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+const fmt = d => d ? d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}) : '';
+const today = () => { const t = new Date(); t.setHours(0,0,0,0); return t; };
+const ghsImg = (c, cls='') => GHS[c] ? `<img src="ghs/${c}.svg" alt="${esc(GHS[c])}" title="${c} – ${esc(GHS[c])}" class="${cls}">` : '';
+
+function toDate(v){
+  if (v instanceof Date) return isNaN(v) ? null : new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  if (typeof v === 'number') { const d = XLSX.SSF.parse_date_code(v); return d ? new Date(d.y, d.m-1, d.d) : null; }
+  if (typeof v === 'string' && v.trim()) { const d = new Date(v); return isNaN(d) ? null : d; }
+  return null;
+}
+function normSignal(v){ v = String(v||'').toLowerCase(); return v.includes('danger') ? 'Danger' : v.includes('warn') ? 'Warning' : 'None'; }
+
+function parse(buf){
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+  const ws = wb.Sheets['Register'] || wb.Sheets[wb.SheetNames.find(n => /register/i.test(n)) || wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
+  return rows.filter(r => String(r['Product']).trim()).map(r => {
+    const id = String(r['ID']).trim();
+    return {
+      id, product:String(r['Product']).trim(), supplier:String(r['Supplier']||'').trim(),
+      category:String(r['Category']||'').trim() || 'Uncategorized', where:String(r['Where Used']||'').trim(),
+      signal:normSignal(r['Signal Word']),
+      pics:(String(r['Pictograms']||'').toUpperCase().match(/GHS0[1-9]/g) || []).filter((c,i,a) => a.indexOf(c) === i),
+      hazards:lines(r['Hazard Statements']), ppe:String(r['PPE']||'').split(/[;\n]/).map(s => s.trim()).filter(Boolean),
+      revised:toDate(r['SDS Revision Date']), added:toDate(r['Date Added']),
+      pdf:String(r['PDF File']||'').trim() || (id ? id + '.pdf' : ''),
+      phone:String(r['Emergency Phone']||'').trim(),
+      archived:/archiv/i.test(String(r['Status']||'')), flag:String(r['Review Flag']||'').trim(),
+      firstAid:lines(r['First Aid']), fire:lines(r['Fire Fighting']), spill:lines(r['Spill / Leak']),
+      handling:lines(r['Handling & Storage']), precautions:lines(r['Precautionary Statements']),
+      notes:String(r['Notes']||'').trim()
+    };
+  });
+}
+const isNew = r => r.added && !r.archived && (today() - r.added) / 864e5 <= NEW_DAYS;
+const active = () => DATA.filter(r => !r.archived);
+const pdfHref = r => 'pdf/' + encodeURIComponent(r.pdf);
+const byName = (a,b) => a.product.localeCompare(b.product, undefined, {sensitivity:'base'});
+
+async function load(){
+  try {
+    const res = await fetch(REGISTER, {cache:'no-cache'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    DATA = parse(await res.arrayBuffer());
+    loadedAt = res.headers.get('last-modified');
+    ready();
+  } catch (e) {
+    app.innerHTML = `<div class="status"><p>Couldn't load <b>${REGISTER}</b> automatically (${esc(e.message)}).</p>
+      <p>If you opened this page from a folder on your computer, pick the workbook here instead:</p>
+      <input type="file" accept=".xlsx" id="pickfile"></div>`;
+    document.getElementById('pickfile').onchange = async ev => {
+      const f = ev.target.files[0]; if (!f) return;
+      DATA = parse(await f.arrayBuffer()); ready();
+    };
+  }
+}
+function ready(){
+  const n = DATA.filter(isNew).length, rv = DATA.filter(r => r.flag && !r.archived).length;
+  const nc = document.getElementById('newCount'), rc = document.getElementById('revCount');
+  nc.textContent = n; nc.hidden = !n; rc.textContent = rv; rc.hidden = !rv;
+  document.getElementById('foot').innerHTML =
+    `${active().length} active SDSs` + (loadedAt ? ` · register updated ${esc(new Date(loadedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}))}` : '') +
+    ` · The PDF is the official SDS; the summaries here are a quick reference.`;
+  route();
+}
+
+/* ---------- views ---------- */
+function vLibrary(){
+  const cats = [...new Set(DATA.map(r => r.category))].sort((a,b) => catRank(a) - catRank(b) || a.localeCompare(b));
+  app.innerHTML = `
+    <div class="searchbar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg>
+      <input id="q" type="search" placeholder="Search product, supplier or hazard…" autocomplete="off" value="${esc(state.q)}" aria-label="Search">
+    </div>
+    <div class="filters" id="cats"><button class="chip ${state.cat?'':'on'}" data-cat="">All areas</button>${cats.map(c => `<button class="chip ${state.cat===c?'on':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="filters" id="sigs">${['Danger','Warning','None'].map(s => `<button class="chip sig-${s} ${state.sig===s?'on':''}" data-sig="${s}">${s==='None'?'No signal word':s}</button>`).join('')}</div>
+    <div class="picks" id="picks">${Object.keys(GHS).filter(c => DATA.some(r => r.pics.includes(c))).map(c => `<button class="pick ${state.pics.has(c)?'on':''}" data-pic="${c}" aria-pressed="${state.pics.has(c)}" title="${esc(GHS[c])}">${ghsImg(c)}</button>`).join('')}</div>
+    <div class="meta"><span id="cnt"></span><span><label><input type="checkbox" id="arch" ${state.archived?'checked':''}> Show archived</label> &nbsp; <button class="linkbtn" id="clear">Clear filters</button></span></div>
+    <div class="list" id="list"></div>`;
+  const q = document.getElementById('q');
+  q.oninput = () => { state.q = q.value; drawList(); };
+  document.getElementById('cats').onclick = e => { const b = e.target.closest('[data-cat]'); if (!b) return; state.cat = b.dataset.cat; vLibrary(); };
+  document.getElementById('sigs').onclick = e => { const b = e.target.closest('[data-sig]'); if (!b) return; state.sig = state.sig === b.dataset.sig ? '' : b.dataset.sig; vLibrary(); };
+  document.getElementById('picks').onclick = e => { const b = e.target.closest('[data-pic]'); if (!b) return; const c = b.dataset.pic; state.pics.has(c) ? state.pics.delete(c) : state.pics.add(c); vLibrary(); };
+  document.getElementById('arch').onchange = e => { state.archived = e.target.checked; drawList(); };
+  document.getElementById('clear').onclick = () => { Object.assign(state,{q:'',cat:'',sig:'',archived:false}); state.pics.clear(); vLibrary(); };
+  drawList();
+  if (matchMedia('(min-width:700px)').matches) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+}
+function drawList(){
+  const terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const rows = DATA.filter(r => {
+    if (r.archived && !state.archived) return false;
+    if (state.cat && r.category !== state.cat) return false;
+    if (state.sig && r.signal !== state.sig) return false;
+    for (const p of state.pics) if (!r.pics.includes(p)) return false;
+    if (terms.length) {
+      const hay = (r.product+' '+r.supplier+' '+r.id+' '+r.category+' '+r.where+' '+r.hazards.join(' ')).toLowerCase();
+      return terms.every(t => hay.includes(t));
+    }
+    return true;
+  }).sort(byName);
+  document.getElementById('cnt').textContent = `${rows.length} of ${DATA.filter(r => state.archived || !r.archived).length} SDSs`;
+  document.getElementById('list').innerHTML = rows.length ? rows.map(r => `
+    <a class="row ${r.archived?'archived':''}" href="#/sds/${encodeURIComponent(r.id)}">
+      <div class="txt">
+        <div class="name">${esc(r.product)}</div>
+        <div class="sub">${esc(r.supplier)}${r.where ? ' · ' + esc(r.where) : ''}</div>
+        <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
+          <span class="badge b-${r.signal}">${r.signal === 'None' ? 'No signal word' : r.signal}</span>
+          ${isNew(r) ? '<span class="badge b-new">New</span>' : ''}${r.archived ? '<span class="badge b-arch">Archived</span>' : ''}
+        </div>
+      </div>
+      <div class="pics">${r.pics.map(c => ghsImg(c)).join('')}</div>
+    </a>`).join('') : `<div class="status">No SDS matches. Check the spelling, or clear the filters.</div>`;
+}
+
+function kvList(arr){
+  if (!arr.length) return '<p class="empty">Not summarized. Open the PDF.</p>';
+  return '<div class="kv">' + arr.map(l => { const m = l.match(/^([^:]{2,60}):\s*(.+)$/); return m ? `<p><b>${esc(m[1])}:</b> ${esc(m[2])}</p>` : `<p>${esc(l)}</p>`; }).join('') + '</div>';
+}
+function vDetail(id){
+  const r = DATA.find(x => x.id === id);
+  if (!r) { app.innerHTML = `<a class="back" href="#/">‹ Library</a><div class="status">No SDS with ID ${esc(id)}.</div>`; return; }
+  const sec = (title, inner, open) => `<details class="sec" ${open?'open':''}><summary>${title}</summary><div class="body">${inner}</div></details>`;
+  app.innerHTML = `
+    <a class="back" href="#/">‹ Library</a>
+    <section class="dhead">
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge b-${r.signal}">${r.signal === 'None' ? 'No signal word' : r.signal}</span>${isNew(r)?'<span class="badge b-new">New</span>':''}${r.archived?'<span class="badge b-arch">Archived</span>':''}</div>
+      <h1>${esc(r.product)}</h1>
+      <div class="sup">${esc(r.supplier)}</div>
+      ${r.pics.length ? `<div class="pics">${r.pics.map(c => `<figure>${ghsImg(c)}<figcaption>${esc(GHS[c])}</figcaption></figure>`).join('')}</div>` : ''}
+      <div class="actions">
+        <a class="btn primary" href="${pdfHref(r)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>Open full SDS (PDF)</a>
+        ${r.phone ? `<a class="btn" href="tel:${esc(r.phone.replace(/[^\d+]/g,''))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>Emergency: ${esc(r.phone)}</a>` : ''}
+        <a class="btn no-print" href="#/label/${encodeURIComponent(r.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>Print container label</a>
+      </div>
+      ${r.flag ? `<div class="flag"><b>Needs review:</b> ${esc(r.flag)}</div>` : ''}
+      ${r.notes ? `<div class="note">${esc(r.notes)}</div>` : ''}
+      <div class="facts">
+        <div><span>Area</span>${esc(r.category)}${r.where ? ' · ' + esc(r.where) : ''}</div>
+        <div><span>SDS revision</span>${fmt(r.revised) || '—'}</div>
+        <div><span>Added to library</span>${fmt(r.added) || '—'}</div>
+        <div><span>Library ID</span>${esc(r.id)}</div>
+      </div>
+    </section>
+    ${sec('Hazards', r.hazards.length ? '<ul>' + r.hazards.map(h => `<li>${esc(h)}</li>`).join('') + '</ul>' : `<p class="empty">${r.signal === 'None' ? 'No hazard statements listed.' : 'Not summarized. See Section 2 of the PDF.'}</p>`, true)}
+    ${sec('PPE', r.ppe.length ? '<div class="ppe">' + r.ppe.map(p => `<span>${esc(p)}</span>`).join('') + '</div>' : '<p class="empty">Not summarized. See Section 8 of the PDF.</p>', true)}
+    ${sec('First aid', kvList(r.firstAid), true)}
+    ${sec('Fire fighting', kvList(r.fire))}
+    ${sec('Spill or leak', kvList(r.spill))}
+    ${sec('Handling &amp; storage', kvList(r.handling))}
+    ${r.precautions.length ? sec('Precautionary statements', '<ul>' + r.precautions.map(h => `<li>${esc(h)}</li>`).join('') + '</ul>') : ''}
+    <p class="disclaim">Summaries were pulled from the SDS and can miss things. The PDF is the official SDS. In an emergency call 911.</p>`;
+  window.scrollTo(0,0);
+}
+
+function vLabel(id){
+  const r = DATA.find(x => x.id === id);
+  if (!r) { vDetail(id); return; }
+  const size = sessionGet('labelSize') || 'big';
+  const hz = r.hazards.map(h => h.replace(/^H\d{3}(\+H\d{3})*\s*/, ''));
+  const big = `<div class="label big">
+      <div class="lname">${esc(r.product)}</div>
+      <div class="lsup">${esc(r.supplier)}</div>
+      ${r.signal !== 'None' ? `<div class="lsig">${r.signal.toUpperCase()}</div>` : '<div style="height:.08in"></div>'}
+      <div class="lpics">${r.pics.map(c => ghsImg(c)).join('')}</div>
+      ${hz.length ? `<ul class="lh">${hz.slice(0,8).map(h => `<li>${esc(h)}</li>`).join('')}${hz.length > 8 ? '<li>See SDS for more</li>' : ''}</ul>` : ''}
+      ${r.ppe.length ? `<div class="lppe"><b>PPE:</b> ${esc(r.ppe.join(', '))}</div>` : ''}
+      <div class="lfoot"><img src="qr.svg" alt=""><div>Full SDS: scan or go to<br><b>${SITE.replace('https://','')}</b><br>${r.phone ? 'Emergency: ' + esc(r.phone) + '<br>' : ''}Atomic Industries · ID ${esc(r.id)}</div></div>
+    </div>`;
+  const small = `<div class="label small">
+      <div class="lpics" style="flex-direction:column;flex-wrap:wrap;max-height:1.8in;align-content:flex-start">${r.pics.slice(0,4).map(c => ghsImg(c)).join('')}</div>
+      <div class="lcol">
+        <div class="lname">${esc(r.product)}</div>
+        ${r.signal !== 'None' ? `<div class="lsig">${r.signal.toUpperCase()}</div>` : ''}
+        ${hz.length ? `<ul class="lh">${hz.slice(0,3).map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}
+        <div class="lfoot"><img src="qr.svg" alt=""><div>${esc(r.supplier)}<br>Full SDS: scan QR · ID ${esc(r.id)}</div></div>
+      </div>
+    </div>`;
+  document.getElementById('pagestyle').textContent = `@media print{@page{size:${size === 'big' ? '4in 6in' : '4in 2in'};margin:0}}`;
+  app.innerHTML = `
+    <a class="back" href="#/sds/${encodeURIComponent(r.id)}">‹ ${esc(r.product)}</a>
+    <div class="toolbar">
+      <button class="chip ${size==='big'?'on':''}" data-size="big">4 × 6 in</button>
+      <button class="chip ${size==='small'?'on':''}" data-size="small">4 × 2 in</button>
+      <button class="btn primary" onclick="print()">Print</button>
+      <span class="hint">Workplace label for secondary containers (spray bottles, pails, totes). Set the printer to the label size.</span>
+    </div>
+    <div class="labels">${size === 'big' ? big : small}</div>`;
+  app.querySelectorAll('[data-size]').forEach(b => b.onclick = () => { sessionSet('labelSize', b.dataset.size); vLabel(id); });
+}
+
+function vNew(){
+  const rows = DATA.filter(isNew).sort((a,b) => b.added - a.added || byName(a,b));
+  app.innerHTML = `
+    <div class="toolbar"><button class="btn primary" onclick="print()">Print notice</button><span class="hint">SDSs added or revised in the last ${NEW_DAYS} days. Post the notice by the SDS station within 5 working days of receiving a new or revised SDS.</span></div>
+    <div class="sheet">
+      <div class="notice-banner">NOTICE TO EMPLOYEES</div>
+      <h2>New or revised Safety Data Sheets</h2>
+      <p class="lead">The Safety Data Sheets below have been received or updated. You can read any SDS on a phone or computer at <b>${SITE.replace('https://','')}</b> (scan the QR code on the SDS station poster), or ask your supervisor for a copy.</p>
+      ${rows.length ? `<table><thead><tr><th>Product</th><th class="hide-sm">Supplier</th><th>Signal word</th><th>Received</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td>${esc(r.product)}</td><td class="hide-sm">${esc(r.supplier)}</td><td>${r.signal === 'None' ? '—' : r.signal}</td><td>${fmt(r.added)}</td></tr>`).join('')}
+      </tbody></table>` : `<p><i>No new or revised SDSs in the last ${NEW_DAYS} days.</i></p>`}
+      <p class="foot">Posted under the MIOSHA Right to Know Law (Michigan Occupational Safety and Health Act, Act 154 of 1974). Date posted: <span class="blank"></span><br>Atomic Industries · Shelby Township, MI</p>
+    </div>`;
+}
+
+function vInventory(){
+  const rows = active().sort((a,b) => (catRank(a.category) - catRank(b.category)) || a.category.localeCompare(b.category) || byName(a,b));
+  let cur = '', body = '';
+  for (const r of rows) {
+    if (r.category !== cur) { cur = r.category; body += `<tr class="cat"><td colspan="5">${esc(cur)} (${rows.filter(x => x.category === cur).length})</td></tr>`; }
+    body += `<tr><td>${esc(r.product)}</td><td class="hide-sm">${esc(r.supplier)}</td><td>${r.signal === 'None' ? '—' : r.signal}</td><td class="pics">${r.pics.map(c => ghsImg(c)).join('')}</td><td class="hide-sm">${fmt(r.revised)}</td></tr>`;
+  }
+  app.innerHTML = `
+    <div class="toolbar"><button class="btn primary" onclick="print()">Print inventory</button><span class="hint">The hazardous chemical list required by the written HazCom program (1910.1200(e)(1)(i)). Archived products are left off.</span></div>
+    <div class="sheet">
+      <h2>Hazardous Chemical Inventory</h2>
+      <p class="lead">Atomic Industries · Shelby Township, MI · ${rows.length} active SDSs · printed ${fmt(today())}</p>
+      <table><thead><tr><th>Product</th><th class="hide-sm">Supplier</th><th>Signal</th><th>Pictograms</th><th class="hide-sm">SDS rev.</th></tr></thead><tbody>${body}</tbody></table>
+      <p class="foot">Each product's SDS is at ${SITE.replace('https://','')}. Product names match the SDS and container label.</p>
+    </div>`;
+}
+
+function vPoster(){
+  app.innerHTML = `
+    <div class="toolbar"><button class="btn primary" onclick="print()">Print poster</button><span class="hint">Letter size. Post at each SDS station and next to the MIOSHA Right to Know poster. Fill in the backup location by hand.</span></div>
+    <div class="sheet poster">
+      <div class="ptop"><h2>SAFETY DATA SHEETS</h2><p>For every chemical in this plant</p></div>
+      <p style="font-size:20px;margin:0 0 8px"><b>Scan with your phone camera</b></p>
+      <img class="qr" src="qr.svg" alt="QR code to the SDS library">
+      <div class="url">${SITE.replace('https://','')}</div>
+      <div class="ghsrow">${Object.keys(GHS).map(c => ghsImg(c)).join('')}</div>
+      <div class="lines">
+        <p>• Search by product name, or pick a pictogram to see everything with that hazard.</p>
+        <p>• Every SDS opens as the full PDF. First aid is near the top of each page.</p>
+        <p>• No phone or no signal? Printed copies are at: <span class="blank" style="min-width:2.6in"></span></p>
+        <p>• Questions: your supervisor or the plant safety representative.</p>
+        <p style="font-size:20px;margin-top:20px"><b>Emergency: call 911.</b></p>
+      </div>
+    </div>`;
+}
+
+function vReview(){
+  const rows = DATA.filter(r => r.flag && !r.archived).sort(byName);
+  app.innerHTML = `
+    <div class="toolbar"><button class="btn" onclick="print()">Print list</button><span class="hint">Outdated, foreign-language, incomplete or duplicate SDSs. Fix them in the register, then clear the Review Flag cell.</span></div>
+    <div class="sheet">
+      <h2>SDSs that need attention (${rows.length})</h2>
+      <p class="lead">Pulled from the Review Flag column of the register.</p>
+      ${rows.length ? `<table><thead><tr><th>Product</th><th>What to do</th><th class="hide-sm">ID</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td><a href="#/sds/${encodeURIComponent(r.id)}">${esc(r.product)}</a><br><small>${esc(r.supplier)}</small></td><td>${esc(r.flag)}</td><td class="hide-sm">${esc(r.id)}</td></tr>`).join('')}
+      </tbody></table>` : '<p><i>Nothing flagged.</i></p>'}
+    </div>`;
+}
+
+/* ---------- routing ---------- */
+function sessionGet(k){ try { return sessionStorage.getItem(k); } catch(e){ return null; } }
+function sessionSet(k,v){ try { sessionStorage.setItem(k,v); } catch(e){} }
+function route(){
+  if (!DATA.length && !document.getElementById('pickfile')) return;
+  document.getElementById('pagestyle').textContent = '@media print{@page{size:letter;margin:.5in}}';
+  const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+  const [v, arg] = h.split('/');
+  const tab = {'':'lib', sds:'lib', label:'lib', new:'new', inventory:'inventory', poster:'poster', review:'review'}[v] || 'lib';
+  document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === tab));
+  if (v === 'sds') vDetail(arg);
+  else if (v === 'label') vLabel(arg);
+  else if (v === 'new') vNew();
+  else if (v === 'inventory') vInventory();
+  else if (v === 'poster') vPoster();
+  else if (v === 'review') vReview();
+  else vLibrary();
+  if (v !== 'sds' && v !== '') window.scrollTo(0,0);
+}
+addEventListener('hashchange', route);
+load();
+})();
+</script>
+</body>
+</html>
