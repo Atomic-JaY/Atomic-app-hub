@@ -104,9 +104,13 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .kv p{margin:0 0 8px}
 .kv b{font-weight:600}
 .empty{color:var(--muted);font-style:italic}
-.ppe{display:flex;flex-wrap:wrap;gap:6px}
-.ppe span{background:#e9eef8;color:#1f2a44;border-radius:8px;padding:5px 10px;font-size:14px}
-@media (prefers-color-scheme: dark){ .ppe span{background:#24314f;color:#dbe4f7} }
+.ppe{display:flex;flex-wrap:wrap;gap:10px 14px}
+.ppe figure{margin:0;width:78px;text-align:center}
+.ppe figure img{width:60px;height:60px;display:block;margin:0 auto 4px}
+.ppe figcaption{font-size:12.5px;line-height:1.2;color:var(--muted)}
+.ppe .txt{background:#e9eef8;color:#1f2a44;border-radius:8px;padding:5px 10px;font-size:14px;align-self:center}
+@media (prefers-color-scheme: dark){ .ppe .txt{background:#24314f;color:#dbe4f7} }
+
 .disclaim{color:var(--muted);font-size:13px;margin:14px 2px}
 
 /* page sheets (notice, poster, inventory, review) */
@@ -151,6 +155,10 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .label .lh{font-size:12.5px;line-height:1.25;margin:.06in 0 0;padding-left:14px}
 .label.small .lh{font-size:9px;margin:2px 0 0;padding-left:12px}
 .label .lppe{font-size:12px;margin-top:.06in}
+.label .lppeicons{display:flex;gap:4px;margin-top:.06in}
+.label .lppeicons img{width:.5in;height:.5in}
+.label.small .lppeicons{margin-top:2px}
+.label.small .lppeicons img{width:.26in;height:.26in}
 .label .lfoot{margin-top:auto;display:flex;align-items:flex-end;gap:8px;font-size:10px;border-top:1.5px solid #000;padding-top:4px}
 .label .lfoot img{width:.7in;height:.7in}
 .label.small .lfoot{font-size:8.5px}
@@ -235,6 +243,15 @@ const lines = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Bool
 const fmt = d => d ? d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}) : '';
 const today = () => { const t = new Date(); t.setHours(0,0,0,0); return t; };
 // PNG, not SVG: phone "dark mode" re-colors SVG pictograms and wipes out the black symbol
+const PPE_ICONS = [
+  [/eye|goggle|glasses/i, 'goggles', 'Eye protection'], [/glove/i, 'gloves', 'Gloves'],
+  [/face shield/i, 'faceshield', 'Face shield'], [/respirat/i, 'respirator', 'Respirator'],
+  [/\bmask\b|dust/i, 'mask', 'Dust mask'], [/apron/i, 'apron', 'Apron'],
+  [/clothing|coverall/i, 'coverall', 'Protective clothing'], [/footwear|shoe|boot/i, 'boots', 'Safety shoes'],
+  [/wash/i, 'wash', 'Wash hands']
+];
+const ppeIcon = p => { for (const [re, f, label] of PPE_ICONS) if (re.test(p)) return {f, label}; return null; };
+const ppeImg = (k, label) => `<img src="ppe/${k}.png" alt="${esc(label)}" title="${esc(label)}">`;
 const ghsImg = c => GHS[c] ? `<img class="ghs" src="ghs/${c}.png" alt="${esc(GHS[c])}" title="${c} – ${esc(GHS[c])}">` : '';
 
 function toDate(v){
@@ -380,7 +397,7 @@ function vDetail(id){
       </div>
     </section>
     ${sec('Hazards', r.hazards.length ? '<ul>' + r.hazards.map(h => `<li>${esc(h)}</li>`).join('') + '</ul>' : `<p class="empty">${r.signal === 'None' ? 'No hazard statements listed.' : 'Not summarized. See Section 2 of the PDF.'}</p>`, true)}
-    ${sec('PPE', r.ppe.length ? '<div class="ppe">' + r.ppe.map(p => `<span>${esc(p)}</span>`).join('') + '</div>' : '<p class="empty">Not summarized. See Section 8 of the PDF.</p>', true)}
+    ${sec('PPE', r.ppe.length ? '<div class="ppe">' + r.ppe.map(p => { const ic = ppeIcon(p); return ic ? `<figure>${ppeImg(ic.f, ic.label)}<figcaption>${esc(ic.label)}</figcaption></figure>` : `<span class="txt">${esc(p)}</span>`; }).join('') + '</div><p class="disclaim" style="margin:10px 0 0">Section 8 of the PDF says which type (glove material, respirator cartridge).</p>' : '<p class="empty">Not summarized. See Section 8 of the PDF.</p>', true)}
     ${sec('First aid', kvList(r.firstAid), true)}
     ${sec('Fire fighting', kvList(r.fire))}
     ${sec('Spill or leak', kvList(r.spill))}
@@ -401,7 +418,7 @@ function vLabel(id){
       ${r.signal !== 'None' ? `<div class="lsig">${r.signal.toUpperCase()}</div>` : '<div style="height:.08in"></div>'}
       <div class="lpics">${r.pics.map(c => ghsImg(c)).join('')}</div>
       ${hz.length ? `<ul class="lh">${hz.slice(0,8).map(h => `<li>${esc(h)}</li>`).join('')}${hz.length > 8 ? '<li>See SDS for more</li>' : ''}</ul>` : ''}
-      ${r.ppe.length ? `<div class="lppe"><b>PPE:</b> ${esc(r.ppe.join(', '))}</div>` : ''}
+      ${r.ppe.length ? `<div class="lppeicons">${r.ppe.map(p => { const ic = ppeIcon(p); return ic ? ppeImg(ic.f, ic.label) : ''; }).join('')}</div><div class="lppe"><b>PPE:</b> ${esc(r.ppe.map(p => (ppeIcon(p) || {label:p}).label).join(', '))}</div>` : ''}
       <div class="lfoot"><img src="qr.svg" alt=""><div>Full SDS: scan or go to<br><b>${SITE.replace('https://','')}</b><br>${r.phone ? 'Emergency: ' + esc(r.phone) + '<br>' : ''}Atomic Industries · ID ${esc(r.id)}</div></div>
     </div>`;
   const small = `<div class="label small">
@@ -409,7 +426,8 @@ function vLabel(id){
       <div class="lcol">
         <div class="lname">${esc(r.product)}</div>
         ${r.signal !== 'None' ? `<div class="lsig">${r.signal.toUpperCase()}</div>` : ''}
-        ${hz.length ? `<ul class="lh">${hz.slice(0,3).map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}
+        ${hz.length ? `<ul class="lh">${hz.slice(0,2).map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}
+        ${r.ppe.some(ppeIcon) ? `<div class="lppeicons">${r.ppe.map(p => { const ic = ppeIcon(p); return ic ? ppeImg(ic.f, ic.label) : ''; }).join('')}</div>` : ''}
         <div class="lfoot"><img src="qr.svg" alt=""><div>${esc(r.supplier)}<br>Full SDS: scan QR · ID ${esc(r.id)}</div></div>
       </div>
     </div>`;
