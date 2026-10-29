@@ -56,28 +56,45 @@ the workbook in the repo **is** the record. Nobody needs a login and nobody need
 | File | What it is |
 | --- | --- |
 | `life-safety/index.html` | The plant map, about 2.5 MB. Photos load from `photos/` and the AED certificates from `certs/`, so swapping a photo is a commit with the same filename. `index.html#FE7` opens straight onto FE7. (The copy on the X: share is the single-file version with everything built in.) |
-| `life-safety/device.html` | Phone page for one device: `device.html?FE7`. Big compliant / due soon / overdue verdict, every required check with last and next dates and who did it, the last 8 inspections, photos, and the AED prescription certificate. With no ID it lists all 51 devices with a status count. Under 1 MB to load. |
+| `life-safety/device.html` | Phone page for one device: `device.html?FE7`. Big compliant / due soon / overdue verdict, every required check with last and next dates and who did it, the last 8 inspections, photos, and the AED prescription certificate. Opened from the device's own label, it also logs that device's routine check. With no ID it lists all 51 devices with a status count and the current walk. Under 1 MB to load. |
 | `life-safety/Life-Safety-PM-Log.xlsx` | The PM log. The Inspection History tab is the record; every Last date on the device tabs is a formula over it. |
 | `life-safety/photos/`, `certs/` | Every device photo (`FE1.jpg` close-up, `FE1-loc.jpg` location) and the two AED prescription PDFs, shared by both pages. |
 | `life-safety/xlsx.core.min.js` | The spreadsheet reader `device.html` uses. |
 
-### QR labels
+### QR labels and logging an inspection
 
-Every device has a label with a QR code for `device.html?<ID>`. Anyone who scans it, an
-auditor included, sees that device's live status on their own phone with no app and no
-login. The labels are permanent, so **don't rename `life-safety/` or `device.html`**:
-that would break every label on the floor. If either ever has to move, leave a
-`device.html` behind that forwards to the new place.
+Every device has a label with a QR code. Scanning it opens `device.html?<ID>` with
+that device's live status: no app, no login, so an auditor can check any device.
 
-### Updating the log
+Each label also carries a private code. Only a scan of the real label unlocks the
+**Pass / Fail** buttons for that device; typing the page address gives the read-only
+view. The site holds only scrambled (SHA-256) versions of the codes, and the codes
+themselves are never in this repo. **Keep the label PDF off GitHub**, since a copy
+of a label works like the label. The labels are permanent, so don't rename
+`life-safety/` or `device.html`.
 
-1. Walk mode on the map (or typing rows onto the Inspection History tab) produces an
-   updated `Life Safety PM Log.xlsx`.
-2. Upload it to `life-safety/` as **`Life-Safety-PM-Log.xlsx`**, replacing the old one,
-   and commit. GitHub Pages republishes in a minute or two.
-3. Until that commit, the map and every QR page show the previous upload. Each status
-   page prints when the log was last updated, so a stale upload is visible to anyone
-   who scans.
+**A walk:** scan a label, check the device, and tap Pass or Fail. A Fail needs a
+note. Your name is asked once per phone. Each entry records the clock time and
+"QR scan". There is no bulk pass: every device needs its own scan. The plant map's
+🚶 Walk mode shows what the walk has covered but cannot log anything itself.
+**Save to log** (on any status page or the map) downloads the updated
+`Life-Safety-PM-Log.xlsx`.
+
+**Publishing it:** upload that file to `life-safety/` here (Add file → Upload files →
+Commit), replacing the old one. GitHub Pages republishes in a minute or two. Until
+then, only the inspector's phone shows the walk; every status page prints when the
+log was last updated.
+
+### The record
+
+- The **Inspection History** tab is the record: one row per inspection, never
+  overwritten. Its **Logged at** column holds the time and method of scanned entries.
+- The tab is protected in Excel to stop accidental edits. Vendor and annual work
+  (UniFirst annuals, hydro tests, 90-minute light tests, eye wash annuals) is added
+  by hand: Review → Unprotect Sheet, add the rows, protect it again.
+- Every upload here is kept in the commit history with its date and the exact rows
+  that changed, so any edit to an old inspection shows.
+- A Fail stays on the record and does not reset the due date.
 
 Intervals are code-driven (NFPA 10, NFPA 101 §7.9.3, ANSI/ISEA Z358.1, ZOLL for the
 AEDs) and live on the workbook's Intervals tab. Change a number there and every due
