@@ -374,7 +374,6 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     <label>Inspector <input id="wbWho" placeholder="Your name" autocomplete="name"></label>
     <span class="wbCount" id="wbCount"></span>
     <span class="wbSpacer"></span>
-    <button class="small secondary" id="wbPassAll">Pass all remaining here</button>
     <button class="small secondary" id="wbDiscard">Discard</button>
     <button class="small" id="wbSave">Save to log</button>
   </div>
@@ -1013,7 +1012,8 @@ function openCard(type, id){
   renderPhotos(id, ++cardGen);
 
   document.getElementById('cardHint').innerHTML =
-    'To log a check: turn on <b>🚶 Walk mode</b> at the top and tap this marker, or add a ' +
+    'To log a check: scan the QR label on this device with your phone (it has to be the ' +
+    'physical label), or for vendor work add a ' +
     'row for <b>' + id + '</b> on the <b>Inspection History</b> tab of the PM log.' + gap;
   document.getElementById('overlay').classList.add('show');
 }
@@ -1039,7 +1039,7 @@ document.getElementById('toggle').addEventListener('click', e=>{
   document.querySelectorAll('#toggle button').forEach(b=>
     b.classList.toggle('active', b === btn));
   render();
-  updateWalkBar();          // "Pass all remaining …" follows the view
+  updateWalkBar();
 });
 
 // The footer used to carry hand-typed counts, and it silently went stale the day
@@ -1174,15 +1174,11 @@ function walkPanelHtml(type, id){
       `${e.note ? ' · ' + esc(e.note) : ''}</div>
       <button class="small secondary" data-walk="undo">Undo</button></div>`;
   }
-  const askWho = walkWho() ? '' :
-    '<input id="wpWho" placeholder="Your name — needed once, remembered after" autocomplete="name">';
+  // Logging needs the device's own QR label: the map shows what this walk has
+  // logged but cannot add to it, so nobody can pass a device from a desk.
   return `<div class="walkPanel">
-    <div class="wpHead">${esc(r.check)} · ${fmt(isoToDate(ACTUAL_TODAY))}</div>
-    ${askWho}
-    <textarea id="wpNote" rows="2" placeholder="Note — required on a Fail: say what is wrong"></textarea>
-    <div class="wpMsg" id="wpMsg"></div>
-    <div class="wpBtns"><button class="wpPass" data-walk="pass">✓ Pass</button>
-      <button class="wpFail" data-walk="fail">✗ Fail</button></div></div>`;
+    <div class="wpHead">${esc(r.check)} · not logged on this walk yet</div>
+    <div class="wpDone">Scan the QR label on ${esc(id)} with this phone to log it.</div></div>`;
 }
 
 function updateWalkBar(){
@@ -1197,15 +1193,10 @@ function updateWalkBar(){
     return `${t} <b>${done}/${ASSETS[t].positions.length}</b>`;
   }).join(' · ') + (fails ? ` · <span class="f">${fails} failed</span>` : '');
   const save = document.getElementById('wbSave');
-  const remaining = ASSETS[view].positions.filter(p => !walk.entries[p.id]).length;
-  const pa = document.getElementById('wbPassAll');
   const dc = document.getElementById('wbDiscard');
   if(!save.dataset.armed) save.textContent = n ? `Save ${n} to log` : 'Save to log';
-  if(!pa.dataset.armed) pa.textContent = remaining
-    ? `Pass all ${remaining} remaining ${view}` : `All ${view} logged`;
   if(!dc.dataset.armed) dc.textContent = 'Discard';
   save.disabled = !n;
-  pa.disabled = !remaining;
   dc.disabled = !n;
 }
 
@@ -1270,15 +1261,6 @@ document.getElementById('walkBtn').addEventListener('click', () => {
 });
 document.getElementById('wbWho').addEventListener('input', walkPersist);
 document.getElementById('wbSave').addEventListener('click', saveWalk);
-document.getElementById('wbPassAll').addEventListener('click', e => {
-  const who = walkWho();
-  if(!who){ needName(); return; }
-  const left = ASSETS[view].positions.filter(p => !walk.entries[p.id]);
-  armButton(e.currentTarget, `Tap again to pass ${left.length}`, () => {
-    left.forEach(p => { walk.entries[p.id] = entryFor(view, p.id, 'Pass', '', who); });
-    walkPersist(); render();
-  });
-});
 document.getElementById('wbDiscard').addEventListener('click', e => {
   const n = Object.keys(walk.entries).length;
   armButton(e.currentTarget, `Tap again to discard ${n}`, () => {
@@ -1394,7 +1376,10 @@ function appendHistory(bytes, entries){
     const v = doc.createElementNS(NS_MAIN, 'v');
     v.textContent = String(excelSerial(e.date));
     cell('A').appendChild(v);
-    [['B', e.dev], ['C', e.check], ['D', e.result], ['E', e.by], ['F', e.note]].forEach(([col, text]) => {
+    // G "Logged at": the clock time and how it was logged (QR scan), so a real
+    // walk shows a believable spread of times and a desk-bound one does not
+    [['B', e.dev], ['C', e.check], ['D', e.result], ['E', e.by], ['F', e.note], ['G', e.logged]].forEach(([col, text]) => {
+      if(col === 'G' && !style.G && style.E) style.G = style.E;
       const c = cell(col);
       if(!text) return;
       c.setAttribute('t', 'inlineStr');
@@ -1407,7 +1392,7 @@ function appendHistory(bytes, entries){
   });
 
   const dim = doc.getElementsByTagNameNS(NS_MAIN, 'dimension')[0];
-  if(dim) dim.setAttribute('ref', 'A1:F' + Math.max(last + entries.length, 5));
+  if(dim) dim.setAttribute('ref', 'A1:G' + Math.max(last + entries.length, 5));
   zipPut(shE, ser(doc));
 
   // Excel recalculates every formula on open, so the device tabs' Last dates

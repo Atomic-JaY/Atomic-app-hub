@@ -83,6 +83,38 @@ table.hist{width:100%;border-collapse:collapse;font-size:14px;background:var(--c
 .list{display:grid;gap:6px;grid-template-columns:minmax(0,1fr)}
 .row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;padding:8px 10px;text-decoration:none}
 .row b{min-width:50px}
+.row .wk{font-weight:800;width:16px;text-align:center}
+.row .wk.p{color:var(--green)} .row .wk.f{color:var(--red)}
+
+/* logging an inspection from the QR page */
+.insp{background:var(--card);border:2px solid var(--navy-2);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.insp .ih{font-weight:700;font-size:17px}
+.insp .guide{font-size:14px;color:var(--muted);margin:4px 0 8px}
+.insp .who{font-size:14px;margin-bottom:8px}
+.insp input,.insp textarea{width:100%;font:inherit;font-size:16px;padding:10px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);margin-bottom:8px}
+.insp .imsg{color:var(--red);font-size:14px;min-height:0}
+.insp .ibtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.insp .ibtns button{font:inherit;font-size:19px;font-weight:700;padding:14px;border:none;border-radius:11px;color:#fff;cursor:pointer}
+.insp .ibtns .pass{background:var(--green)} .insp .ibtns .fail{background:var(--red)}
+.insp.logged{border-color:var(--green);background:var(--green-bg);display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:start}
+.insp.logged.fail{border-color:var(--red);background:var(--red-bg)}
+.insp.logged b{font-size:17px} .insp.logged span{font-size:14px;grid-column:1}
+.insp.logged .lnk{grid-column:2;grid-row:1}
+.lnk{background:none;border:none;color:inherit;text-decoration:underline;font:inherit;font-size:14px;cursor:pointer;padding:0}
+.inspOpen{display:block;width:100%;margin-top:14px;font:inherit;font-size:15px;padding:11px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.saved{background:var(--green-bg);border:2px solid var(--green);border-radius:14px;padding:12px 14px;margin:0 0 14px;font-size:15px}
+.saved b{display:block;font-size:17px;margin-bottom:4px}
+.saved ol{margin:6px 0 0;padding-left:20px}
+.walkbar{position:fixed;left:0;right:0;bottom:0;background:var(--navy);color:#fff;z-index:20;box-shadow:0 -4px 14px rgba(0,0,0,.25)}
+.walkbar .in{max-width:640px;margin:0 auto;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.walkbar .c{flex:1;min-width:150px;font-size:14px}
+.walkbar .c b{font-size:16px}
+.walkbar .f{color:#ffb3b4;font-weight:700}
+.walkbar button,.walkbar a{font:inherit;font-size:15px;font-weight:600;padding:9px 13px;border-radius:9px;border:none;cursor:pointer;text-decoration:none;white-space:nowrap}
+.walkbar .sv{background:#fff;color:var(--navy)} .walkbar .rv{background:var(--navy-2);color:#fff}
+.walkbar .dc{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+.walkbar .armed{background:var(--red);color:#fff}
+body.walking main{padding-bottom:90px}
 .row .l{flex:1;min-width:0;font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
@@ -125,6 +157,12 @@ const CHECKS = {
 // AED battery and pads are logged by expiry, so "Last/Next" reads better as installed/replace by.
 const CONSUMABLE = new Set(['Battery Change','Pad Change']);
 const DOCS = {AED1:[['Prescription certificate','certs/AED1.pdf']], AED2:[['Prescription certificate','certs/AED2.pdf']]};
+const STATE = {};
+// SHA-256 of "<ID>:<code>" for the code printed into each device's QR label. The
+// codes themselves are not on this site, so the Pass/Fail buttons only appear for
+// someone holding a phone to the real label; typing the address gives the
+// read-only page. Built from data/label_keys.json, which stays off GitHub.
+const KEY_HASHES = {"FE1": "89d438a5e6557fefe0c847dc8160ff95c2bd68db9b7ed3e2a3e4e68fa62a92b6", "FE2": "515b33f355bc3ee0805fbd8120d452d325f9138abbfa48633b4e69234d1a1b04", "FE3": "0b7c8786921a6495d36be80a78f74413027dd11304cfd42a04794fe2a898c175", "FE4": "4bbb08ab75d9742f5f1ac1ca4e43d5719e9cc3e554700ccba73b18ed493692b9", "FE5": "33accd2a79ff29d68948d0d86d34e37f68200e89c5852e2e2780b081f67dc59e", "FE6": "441718141bfd40471df300c510182f6b5de7a966e3504f0c1f9397f93f2e78e1", "FE7": "beb755eefc56ab01962d13190ab2fd20bada1103e7ed8cb61e6f43adb81f222d", "FE8": "93e03c432d91f059ba36e568f19a31db33c4baee34ceb81b622bb8864b3f5e79", "FE9": "6f36a73b4d3719770aeec117063187017dc50eb6b6d3087b4fed199e7ab30d22", "FE10": "c776b56b251770dcd8894a62a4861fbe64a6238ea7df01da75abd94c7b6ca3d6", "FE11": "40d4e7fb660421c4af60e0ad3663897e36552a6d03d1099304616d1da199c595", "FE12": "c277d9fcbe562faa2f8c2204225e40abd38f885653a248f083c1ef082d019c63", "FE13": "c4c1b13896e707c558bec37a5ca6bff0d0913cc4f9d9c2dae2ed120d8cd80e70", "FE14": "b82e1e20ccc0404bcab29e590d46e7b57e19a0f8c6d3158e3c3b99b36dda167f", "FE15": "7f74d57d9d845efd1b73ead7d007ba6ca561812437c61175baf8ddb5db783606", "FE16": "d5cc5f593525c4eea881e3fdb8b1460b5c75c4128822cea07421e650e643be08", "FE17": "978c2b8f12d1d26bf598b7f49397e4a7218a225f80bfe75e0b5e010ee13315fb", "FE18": "8184a2e95111898081bc911be5dad134b590f08742dec983f874c0c73e0f4ebd", "FE19": "3b2df075d9aeb286ae4343798ac51218e0d8f3f7931ae23b216056a46b1d8ab7", "FE20": "f1ad2df2bedbbf645a1b1f29e6d354cc4ac87b21c00ccf41cdba06f8f109ce5f", "FE21": "72c7035a09c324caec86c7c1182f2275b358975490706dc0e9c5067f986078f8", "EL1": "488c690b5e373954d30f7aafe3dd3925688dd2db049c98fd6929d6270556ee93", "EL2": "63a6d32a0622268327a35d1dafe42621557317c974ac182b9464d02cd63ff599", "EL3": "c012e2390f90aeb7a7b7288e3135a6a44cb7b1bae742b865debce90a8e49387a", "EL4": "04df2c76d983bda6d4ce947c17cc26def0b8c12d067fa6935eb02570e30d9168", "EL5": "4e9da6294a41902fc7fa0f150ccadcdcd22c8a468cc66324593e3a0c01753d26", "EL6": "b31da198f10b58a0b82c20bff35885659b811c70e4f1e92d66ac5af98ed9b79b", "EL7": "e9c11ca7c687654b7d99208d3995d7c4bcb3f4965cfdca59d98bb13c0676c228", "EL8": "f6a551153c3bf648bff90b81a3adadcb3a8c9d118c4a695bbb79311f3213a6c1", "EL9": "6c20c4f6a3d9ca9f45bfc9bd447906cfbf1855aa60b2e56eb30571898a18b885", "EL10": "1181a5a288fc3bd9bcba4ea606e3ebc214c452de3ff1b609aa5c859c829311e8", "EL11": "c263e30d67e04c980402323a0876750aacec719668058879377104f56c6c666e", "EL12": "07d900b5989078a2aa10fa58ed600177e6778334f4b699ea001df86d72c9ad19", "EL13": "b3c3c01b4b0d28967b88a6cdb82d5801884dd8c1ba321e41eadfe235c4ba097d", "EL14": "de754ca5dce613f30d0f75208df7aed65d6ef972e04023f7cc95d9fd5e26ad4b", "EL15": "6e468cca7dcca9ccb904b195169cf029e9cfc7f9c528a306337493d481f37c75", "EL16": "eedb079ed2d53d5c604b1dda55dd96549f4bed9dd4359399e35195f5eef55c2f", "EL17": "efb0a67e8ca28a79e6fd05da382e462c9174f0f9b1677539e8aa42f3d4ff9507", "EL18": "a0904996db56878767c102143b2fab75d5303f0daf2a812a920b77882e88d2b8", "EL19": "91d1d7c64f7d01b671bf6ddc08b3d74ae160a8cef6432b53408a45ee276f5b1b", "EL20": "8c61848eb45a2b372b3d5e7a990abe605478c8bf77ae4f56834b48e2dc0241c3", "EL21": "046970f1e797185cc4c46edc3b782cc97deba84de8fe9da2db9cff15d7815733", "EL22": "40dc45a7bb8a8c65a0c4b39d99a8762113119cfbb4cee6d3605998098595c0c6", "EL23": "cbde93fb2addceaa6347fc7c823ad524353bb972163669a222c2f34b0e2a1a1e", "EW1": "a9dfb0a693bbb5212a8918d792893b437c96b3f4149431dab48b092235888be9", "EW2": "7f41f6506fcae35ed1bba5848866240f97c2c5577f6067d2f4c413c32bce1f8a", "EW3": "c72e01f2c3609e964d5bffd75124ab730b2041e135d6bc8e09846239c62e0a62", "EW4": "5a56ee1a46061544377d94387f2cdf35c1c4ccf80f5f510bebcef12347f1eab6", "EW5": "6b2fb7e30ba2ca54615375b8ee982772bd5143725aab8071a24cabc829083d32", "AED1": "4824ea385fbdd1b077ddf74adcf9e3ab0a33ecadab6ac42bdb28f1ef802c5844", "AED2": "1661db150e7134468eaebae4b83d4e2e21fee84d3516a0265104456dee8dff5e"};
 const WORKBOOKS = ['Life-Safety-PM-Log.xlsx', 'Life Safety PM Log.xlsx'];
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -190,7 +228,8 @@ function readHistory(wb){
   const h = rows[hi].map(x => String(x).trim().toLowerCase()), c = n => h.indexOf(n);
   return rows.slice(hi+1).map(r => ({date: cellDate(r[c('date')]), dev: String(r[c('device')] ?? '').trim().toUpperCase(),
     check: String(r[c('check')] ?? '').trim(), result: String(r[c('result')] ?? '').trim(),
-    by: String(r[c('inspected by')] ?? '').trim(), note: String(r[c('notes')] ?? '').trim()}))
+    by: String(r[c('inspected by')] ?? '').trim(), note: String(r[c('notes')] ?? '').trim(),
+    logged: c('logged at') < 0 ? '' : String(r[c('logged at')] ?? '').trim()}))
     .filter(x => x.date && x.dev);
 }
 
@@ -251,6 +290,7 @@ function renderDevice(id, d, hist, asOf){
     <div class="loc">${esc(d.location || dev.loc || '')}</div>
     ${d.detail ? `<div class="sub">${esc(d.detail)}</div>` : ''}
     <div class="verdict ${st}"><div class="ic">${icon}</div><div><b>${LABEL[st]}</b><span>${esc(headline)}</span></div></div>
+    ${savedHtml()}${inspectorMode(id) ? `<div id="inspSlot">${inspectHtml(id, d.type)}</div>` : ''}
     <div class="photos">${photo('', 'Unit')}${photo('-loc', 'Location')}</div>
     ${DOCS[id] ? `<div class="docs">${DOCS[id].map(([n,u]) => `<a href="${u}" target="_blank">📄 ${esc(n)}</a>`).join('')}</div>` : ''}
     <h2>Required checks</h2>
@@ -263,21 +303,28 @@ function renderDevice(id, d, hist, asOf){
     }).join('') || '<div class="msg">No checks set up for this device.</div>'}
     <h2>Recent inspections</h2>
     ${mine.length ? `<table class="hist"><tr><th>Date</th><th>Check</th><th>Result</th><th>By</th></tr>${mine.map(x => `
-      <tr><td class="dt">${short(x.date)}</td><td>${esc(nice(x.check))}${/fail/i.test(x.result) && x.note ? `<div class="note">${esc(x.note)}</div>` : ''}</td>
+      <tr><td class="dt">${short(x.date)}${(x.logged.match(/\d{1,2}:\d{2}\s?[AP]M/i) || [''])[0] ? `<div class="note">${esc(x.logged.match(/\d{1,2}:\d{2}\s?[AP]M/i)[0])}${/qr/i.test(x.logged) ? ' · scan' : ''}</div>` : ''}</td><td>${esc(nice(x.check))}${/fail/i.test(x.result) && x.note ? `<div class="note">${esc(x.note)}</div>` : ''}</td>
       <td class="${/pass/i.test(x.result) ? 'pass' : /fail/i.test(x.result) ? 'fail' : ''}">${esc(x.result)}</td><td>${esc(x.by || '—')}</td></tr>`).join('')}</table>`
       : '<div class="msg">No inspections on record yet.</div>'}
-    <div class="asof">${asOf}<br><a href="./#${encodeURIComponent(id)}">Show ${esc(id)} on the plant map</a> (large page)</div>`;
+    ${!inspectorMode(id) && STATE.scanned === id ? '<button class="inspOpen" data-act="open">Inspector? Log an inspection</button>' : ''}
+    <div class="asof">${asOf} Inspections are logged by scanning the QR label on the device itself.<br><a href="./#${encodeURIComponent(id)}">Show ${esc(id)} on the plant map</a> (large page)</div>`;
+  walkBar();
 }
 
 function renderList(found, asOf){
   const rows = DEVICES.map(x => ({...x, st: found[x.id] ? status(found[x.id]).status : 'unknown'}));
   const n = k => rows.filter(r => r.st === k).length;
+  const n0 = Object.keys(WALK.entries).length;
+  const badge = id => { const e = WALK.entries[id]; return e ? `<span class="wk ${e.result === 'Pass' ? 'p' : 'f'}">${e.result === 'Pass' ? '✓' : '✗'}</span>` : ''; };
   document.getElementById('main').innerHTML = `
+    ${savedHtml()}
     <div class="kind">All life safety devices</div><h1 style="font-size:28px">${rows.length} devices</h1>
+    ${n0 ? `<div class="msg" style="padding:0 0 10px;text-align:left">This walk so far: ${Object.keys(KIND).map(t => `${t} <b>${rows.filter(r => r.type === t && WALK.entries[r.id]).length}/${rows.filter(r => r.type === t).length}</b>`).join(' · ')}. ✓ and ✗ mark what you have logged.</div>` : ''}
     <div class="sum">${['over','soon','ok','unknown'].map(k => `<div class="${k}"><b>${n(k)}</b><span>${LABEL[k]}</span></div>`).join('')}</div>
     ${Object.keys(KIND).map(t => `<h2>${KIND[t]}s</h2><div class="list">${rows.filter(r => r.type === t).map(r => `
-      <a class="row ${r.st}" href="device.html?${r.id}"><b>${r.id}</b><span class="l">${esc((found[r.id] || {}).location || r.loc)}</span><span class="chip">${LABEL[r.st]}</span></a>`).join('')}</div>`).join('')}
+      <a class="row ${r.st}" href="device.html?${r.id}">${badge(r.id)}<b>${r.id}</b><span class="l">${esc((found[r.id] || {}).location || r.loc)}</span><span class="chip">${LABEL[r.st]}</span></a>`).join('')}</div>`).join('')}
     <div class="asof">${asOf}</div>`;
+  walkBar();
 }
 
 (async function(){
@@ -285,12 +332,24 @@ function renderList(found, asOf){
   const q = decodeURIComponent((location.search.slice(1).replace(/^id=/i, '') || location.hash.slice(1)).split('&')[0]).trim().toUpperCase();
   const main = document.getElementById('main');
   let wb = null, modified = null;
+  STATE.q = q;
+  const k = (location.search.match(/[?&]k=([a-z0-9]+)/i) || [])[1];
+  if(q && k){
+    try{
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(q + ':' + k.toLowerCase()));
+      const hex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+      if(KEY_HASHES[q] && KEY_HASHES[q] === hex) STATE.scanned = q;
+    }catch(e){}
+    // the code is proof of one scan, not a bookmark: drop it from history
+    history.replaceState(null, '', 'device.html?' + encodeURIComponent(q));
+  }
   for(const name of WORKBOOKS){
     try{
       const res = await fetch(encodeURI(name), {cache:'no-store'});
       if(!res.ok) continue;
       modified = res.headers.get('last-modified');
-      wb = XLSX.read(new Uint8Array(await res.arrayBuffer()), {type:'array', cellDates:true});
+      STATE.bytes = new Uint8Array(await res.arrayBuffer());
+      wb = XLSX.read(STATE.bytes, {type:'array', cellDates:true});
       break;
     }catch(e){}
   }
@@ -300,10 +359,247 @@ function renderList(found, asOf){
   const latest = hist.reduce((m, x) => x.date > m ? x.date : m, '');
   const asOf = 'Live from the PM log' + (modified ? ', last updated ' + new Date(modified).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '') +
     (latest ? '. Latest inspection on record: ' + fmt(latest) + '.' : '.') + ' Checked ' + fmt(iso(TODAY)) + '.';
+  Object.assign(STATE, {found, hist, asOf});
   if(!q){ document.getElementById('allLink').style.display = 'none'; renderList(found, asOf); return; }
   if(!found[q]){ main.innerHTML = `<div class="msg">No device called <b>${esc(q)}</b> in the log. <a href="device.html">See all devices</a>.</div>`; return; }
   renderDevice(q, found[q], hist, asOf);
 })();
+
+// ───────────────────────── logging from the QR page ─────────────────────────
+// A scan opens this page; an inspector taps Pass or Fail for the device's routine
+// check. Entries go into the same walk the plant map's Walk mode keeps
+// (localStorage "lspm-walk" on this site), so a walk can be started on the map and
+// finished by scanning, or the other way round. Save appends the walk to the
+// Inspection History tab exactly as the map does and downloads the updated log.
+// Nothing reaches the live site until that file is uploaded.
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+const WALK = {entries: ((store.get('lspm-walk') || {}).entries) || {}};
+const walkSave = () => store.set('lspm-walk', {entries: WALK.entries});
+const inspector = () => (store.get('lspm-inspector') || '').trim();
+// Panel shows at the top for anyone who has logged on this phone before; everyone
+// else (an auditor scanning a label) gets a single button at the bottom instead.
+const inspectorMode = id => !!WALK.entries[id] ||
+  (STATE.scanned === id && (!!inspector() || STATE.openInsp === id));
+const GUIDE = {
+  FE: 'Gauge in the green · pin and tamper seal intact · no dents, rust or leaks · hose and nozzle clear · mounted, visible, nothing blocking it',
+  EL: 'Hold the test button 30 seconds · both lamps stay lit the whole time · housing and lenses undamaged',
+  EW: 'Activate it: covers pop off, both heads flow evenly, water runs clear · tank full · area clear and sign visible',
+  AED: 'Ready indicator showing · no service alert · pads and battery in date · rescue kit present · cabinet closed',
+};
+const TYPE_ORDER = Object.keys(KIND);
+
+function inspectHtml(id, type){
+  const e = WALK.entries[id], who = inspector();
+  if(e) return `<div class="insp logged ${e.result === 'Fail' ? 'fail' : ''}">
+      <b>${e.result === 'Pass' ? '✓ Pass' : '✗ Fail'} logged · ${esc(nice(e.check))}</b>
+      <button class="lnk" data-act="undo">Undo</button>
+      <span>${esc(e.logged || short(e.date))} · ${esc(e.by)}${e.note ? ' · ' + esc(e.note) : ''}<br>Saved on this phone. Scan the next label, then tap <b>Save to log</b> at the end.</span></div>`;
+  return `<div class="insp"><div class="ih">Log today's ${esc(nice(ROUTINE[type].check).toLowerCase())}</div>
+    <div class="guide">${esc(GUIDE[type])}</div>
+    ${who ? `<div class="who">Inspector: <b>${esc(who)}</b> · <button class="lnk" data-act="who">change</button></div>`
+          : '<input id="iWho" placeholder="Your name (asked once, remembered on this phone)" autocomplete="name">'}
+    <textarea id="iNote" rows="2" placeholder="Note (required on a Fail: say what is wrong)"></textarea>
+    <div class="imsg" id="iMsg"></div>
+    <div class="ibtns"><button class="pass" data-act="pass">✓ Pass</button><button class="fail" data-act="fail">✗ Fail</button></div></div>`;
+}
+
+function savedHtml(){
+  const s = STATE.saved; if(!s) return '';
+  return `<div class="saved"><b>Saved ${s.n} inspection${s.n === 1 ? '' : 's'}${s.fails ? ` (${s.fails} failed)` : ''} to the log</b>
+    Your phone downloaded <b>Life-Safety-PM-Log.xlsx</b>. Only this phone shows the walk until that file is published:
+    <ol><li>Upload it on GitHub: Atomic-app-hub → life-safety → Add file → Upload files → Commit changes, <i>or</i></li>
+    <li>Put it in the Emergency Device Log share folder (as <i>Life Safety PM Log.xlsx</i>) and have Claude upload it.</li></ol></div>`;
+}
+
+function walkBar(){
+  let bar = document.getElementById('walkbar');
+  const list = Object.values(WALK.entries), n = list.length;
+  document.body.classList.toggle('walking', n > 0);
+  if(!n){ if(bar) bar.remove(); return; }
+  if(!bar){ bar = document.createElement('div'); bar.id = 'walkbar'; bar.className = 'walkbar'; document.body.appendChild(bar); }
+  const fails = list.filter(e => e.result === 'Fail').length;
+  bar.innerHTML = `<div class="in"><div class="c"><b>${n} logged</b> on this walk${fails ? ` · <span class="f">${fails} failed</span>` : ''}<br>not yet saved to the log</div>
+    ${STATE.q ? '<a class="rv" href="device.html">Review</a>' : '<button class="dc" data-act="discard">Discard</button>'}
+    <button class="sv" data-act="save">Save to log</button></div>`;
+}
+
+function rerender(){
+  if(STATE.q && STATE.found[STATE.q]) renderDevice(STATE.q, STATE.found[STATE.q], STATE.hist, STATE.asOf);
+  else renderList(STATE.found, STATE.asOf);
+}
+
+function saveWalk(){
+  const list = Object.values(WALK.entries).sort((a, b) =>
+    TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type) ||
+    (+a.dev.replace(/^\D+/, '')) - (+b.dev.replace(/^\D+/, '')));
+  if(!list.length || !STATE.bytes) return;
+  let out;
+  try{ out = appendHistory(STATE.bytes, list); }
+  catch(err){ alertBox('Could not add the walk to the log (' + err.message + '). Nothing was saved; your walk is still on this phone.'); return; }
+  const url = URL.createObjectURL(new Blob([out], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  const a = document.createElement('a'); a.href = url; a.download = 'Life-Safety-PM-Log.xlsx';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  // show the walk straight away, read back from the file just written
+  STATE.bytes = out;
+  const wb = XLSX.read(out, {type:'array', cellDates:true});
+  STATE.found = parse(wb); STATE.hist = readHistory(wb); applyHistory(STATE.found, STATE.hist, wb);
+  STATE.saved = {n: list.length, fails: list.filter(e => e.result === 'Fail').length};
+  WALK.entries = {}; walkSave();
+  rerender(); window.scrollTo(0, 0);
+}
+function alertBox(t){ const m = document.getElementById('iMsg'); if(m) m.textContent = t; else console.warn(t); }
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const act = b.dataset.act, id = STATE.q, d = id && STATE.found[id];
+  if(act === 'open'){ STATE.openInsp = id; rerender(); document.getElementById('inspSlot')?.scrollIntoView({behavior:'smooth', block:'center'}); return; }
+  if(act === 'who'){ store.set('lspm-inspector', ''); STATE.openInsp = id; rerender(); return; }
+  if(act === 'undo'){ delete WALK.entries[id]; walkSave(); rerender(); return; }
+  if(act === 'save'){ saveWalk(); return; }
+  if(act === 'discard'){
+    if(!b.dataset.armed){ b.dataset.armed = 1; b.classList.add('armed'); b.textContent = 'Tap again to discard';
+      setTimeout(() => { if(b.isConnected){ delete b.dataset.armed; b.classList.remove('armed'); b.textContent = 'Discard'; } }, 4000); return; }
+    WALK.entries = {}; walkSave(); rerender(); return;
+  }
+  if(act === 'pass' || act === 'fail'){
+    const msg = t => { document.getElementById('iMsg').textContent = t; };
+    const iw = document.getElementById('iWho');
+    if(iw && iw.value.trim()) store.set('lspm-inspector', iw.value.trim());
+    const who = inspector();
+    if(!who){ msg('Enter your name first.'); iw && iw.focus(); return; }
+    const note = document.getElementById('iNote').value.trim();
+    if(act === 'fail' && !note){ msg('A Fail needs a note saying what is wrong.'); document.getElementById('iNote').focus(); return; }
+    if(STATE.scanned !== id){ msg('Scan the QR label on ' + id + ' to log it.'); return; }
+    const now = new Date();
+    const clock = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    WALK.entries[id] = {date: iso(TODAY), dev: id, type: d.type, check: ROUTINE[d.type].check,
+                        result: act === 'pass' ? 'Pass' : 'Fail', by: who, note,
+                        logged: short(iso(TODAY)) + ' ' + clock + ' · QR scan'};
+    walkSave(); STATE.saved = null; rerender();
+  }
+});
+// another tab (the map, or a second scan) may change the walk
+window.addEventListener('storage', ev => {
+  if(ev.key !== 'lspm-walk' || !STATE.found) return;
+  WALK.entries = ((store.get('lspm-walk') || {}).entries) || {}; rerender();
+});
+
+const NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const NS_ODR  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+function zipFind(cfb, path){
+  const i = cfb.FullPaths.findIndex(p => p.replace(/^[^\/]*\//, '') === path);
+  return i < 0 ? null : cfb.FileIndex[i];
+}
+function zipText(entry){ return new TextDecoder('utf-8').decode(entry.content); }
+function zipPut(entry, text){
+  const bytes = new TextEncoder().encode(text);
+  entry.content = bytes; entry.size = bytes.length;
+}
+function excelSerial(iso){
+  const [y, m, d] = iso.split('-').map(Number);
+  return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000;
+}
+function colOf(ref){ return ref.replace(/\d+/g, ''); }
+
+function appendHistory(bytes, entries){
+  const cfb = XLSX.CFB.read(bytes, {type: 'array'});
+  const parse = s => new DOMParser().parseFromString(s, 'application/xml');
+  const ser = d => new XMLSerializer().serializeToString(d);
+
+  // workbook.xml names the sheet, its rels file maps the id to a part
+  const wbE = zipFind(cfb, 'xl/workbook.xml');
+  const wbDoc = parse(zipText(wbE));
+  const sheetEl = [...wbDoc.getElementsByTagNameNS(NS_MAIN, 'sheet')]
+    .find(s => s.getAttribute('name') === 'Inspection History');
+  if(!sheetEl) throw new Error('this workbook has no "Inspection History" tab');
+  const rid = sheetEl.getAttributeNS(NS_ODR, 'id');
+  const relDoc = parse(zipText(zipFind(cfb, 'xl/_rels/workbook.xml.rels')));
+  const rel = [...relDoc.getElementsByTagName('Relationship')].find(r => r.getAttribute('Id') === rid);
+  let target = rel.getAttribute('Target');
+  target = target.startsWith('/') ? target.slice(1) : 'xl/' + target;
+  const shE = zipFind(cfb, target);
+  const doc = parse(zipText(shE));
+  const sheetData = doc.getElementsByTagNameNS(NS_MAIN, 'sheetData')[0];
+  const rows = [...sheetData.getElementsByTagNameNS(NS_MAIN, 'row')];
+
+  // last row that actually holds something, and a style per column copied from
+  // the data above it, so new rows look exactly like the old ones
+  let last = 5;
+  const style = {};
+  for(const r of rows){
+    const n = +r.getAttribute('r');
+    for(const c of r.getElementsByTagNameNS(NS_MAIN, 'c')){
+      const col = colOf(c.getAttribute('r'));
+      if(n >= 6 && c.getAttribute('s')) style[col] = c.getAttribute('s');
+      if(n >= 6 && (c.getElementsByTagNameNS(NS_MAIN, 'v').length ||
+                    c.getElementsByTagNameNS(NS_MAIN, 'is').length)) last = Math.max(last, n);
+    }
+  }
+  const byNum = new Map(rows.map(r => [+r.getAttribute('r'), r]));
+
+  entries.forEach((e, k) => {
+    const n = last + 1 + k;
+    // a styled-but-empty row can already sit at this number; reuse it rather than
+    // write a second <row r="n">, which Excel treats as a corrupt file
+    let row = byNum.get(n);
+    if(row){ while(row.firstChild) row.removeChild(row.firstChild); }
+    else {
+      row = doc.createElementNS(NS_MAIN, 'row');
+      row.setAttribute('r', n);
+      const after = [...byNum.keys()].filter(x => x > n).sort((a, b) => a - b)[0];
+      sheetData.insertBefore(row, after ? byNum.get(after) : null);
+      byNum.set(n, row);
+    }
+    const cell = (col) => {
+      const c = doc.createElementNS(NS_MAIN, 'c');
+      c.setAttribute('r', col + n);
+      if(style[col]) c.setAttribute('s', style[col]);
+      row.appendChild(c);
+      return c;
+    };
+    const v = doc.createElementNS(NS_MAIN, 'v');
+    v.textContent = String(excelSerial(e.date));
+    cell('A').appendChild(v);
+    // G "Logged at": the clock time and how it was logged (QR scan), so a real
+    // walk shows a believable spread of times and a desk-bound one does not
+    [['B', e.dev], ['C', e.check], ['D', e.result], ['E', e.by], ['F', e.note], ['G', e.logged]].forEach(([col, text]) => {
+      if(col === 'G' && !style.G && style.E) style.G = style.E;
+      const c = cell(col);
+      if(!text) return;
+      c.setAttribute('t', 'inlineStr');
+      const is = doc.createElementNS(NS_MAIN, 'is');
+      const t = doc.createElementNS(NS_MAIN, 't');
+      t.textContent = text;
+      if(/^\s|\s$/.test(text)) t.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
+      is.appendChild(t); c.appendChild(is);
+    });
+  });
+
+  const dim = doc.getElementsByTagNameNS(NS_MAIN, 'dimension')[0];
+  if(dim) dim.setAttribute('ref', 'A1:G' + Math.max(last + entries.length, 5));
+  zipPut(shE, ser(doc));
+
+  // Excel recalculates every formula on open, so the device tabs' Last dates
+  // pick the new rows up the first time anyone opens the file
+  let calc = wbDoc.getElementsByTagNameNS(NS_MAIN, 'calcPr')[0];
+  if(!calc){
+    calc = wbDoc.createElementNS(NS_MAIN, 'calcPr');
+    wbDoc.documentElement.appendChild(calc);
+  }
+  calc.setAttribute('fullCalcOnLoad', '1');
+  zipPut(wbE, ser(wbDoc));
+
+  const out = XLSX.CFB.write(cfb, {fileType: 'zip', type: 'array', compression: true});
+  return out instanceof Uint8Array ? out : new Uint8Array(out);
+}
+
+
+
 </script>
 </body>
 </html>
