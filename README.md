@@ -3,13 +3,13 @@
 Internal tools for the Shelby Township plant. Plain HTML, no build step, no framework,
 nothing server-side — served straight off GitHub Pages.
 
-**Live site:** https://atomic-jay.github.io/Atomic-app-hub/
+**Live site:** https://atomic-jay.github.io/Atomic-app-hub/ (a landing page linking each app)
 
 ## What's here
 
 | App | What it does |
 | --- | --- |
-| Life Safety PM Tracker (`index.html`) | Interactive plant map of 21 fire extinguishers, 23 emergency lights and 4 eye wash stations, with the PM interval each one owes and photos of every unit. |
+| Life Safety PM Tracker (`life-safety/`) | Interactive plant map of 21 fire extinguishers, 23 emergency lights, 5 eye wash stations and 2 AEDs, with every PM check each one owes, walk mode for logging inspections, and a QR label on every device that opens its live status. |
 | SDS Library (`sds/`) | Every Safety Data Sheet in the plant, searchable from a phone. Replaces SDS Manager. Prints container labels, the Right to Know notice, the HazCom chemical inventory and the SDS station QR poster. |
 
 ## SDS Library
@@ -47,60 +47,51 @@ Keep a printed or USB backup at the SDS station for when the network is down.
 
 ## Life Safety PM Tracker
 
-Open the live site and the tracker reads `Life-Safety-PM-Log.xlsx` out of this repo by
-itself — nobody needs a copy of the workbook on their own machine. Markers are green when
-compliant, amber inside the due-soon window, flashing red when overdue, and grey when no
-date has been logged yet. Click one for its photos and its full list of checks.
+**Map:** https://atomic-jay.github.io/Atomic-app-hub/life-safety/
+**Device status (what the QR labels open):** https://atomic-jay.github.io/Atomic-app-hub/life-safety/device.html
 
-All 96 photos are built into `index.html`, so the page has no folder to keep alongside it
-and nothing to download but itself.
+Both pages read `life-safety/Life-Safety-PM-Log.xlsx` out of this repo on every load, so
+the workbook in the repo **is** the record. Nobody needs a login and nobody needs a copy.
 
-Intervals are code-driven, not guesses:
+| File | What it is |
+| --- | --- |
+| `life-safety/index.html` | The plant map, about 2.5 MB. Photos load from `photos/` and the AED certificates from `certs/`, so swapping a photo is a commit with the same filename. `index.html#FE7` opens straight onto FE7. (The copy on the X: share is the single-file version with everything built in.) |
+| `life-safety/device.html` | Phone page for one device: `device.html?FE7`. Big compliant / due soon / overdue verdict, every required check with last and next dates and who did it, the last 8 inspections, photos, and the AED prescription certificate. With no ID it lists all 51 devices with a status count. Under 1 MB to load. |
+| `life-safety/Life-Safety-PM-Log.xlsx` | The PM log. The Inspection History tab is the record; every Last date on the device tabs is a formula over it. |
+| `life-safety/photos/`, `certs/` | Every device photo (`FE1.jpg` close-up, `FE1-loc.jpg` location) and the two AED prescription PDFs, shared by both pages. |
+| `life-safety/xlsx.core.min.js` | The spreadsheet reader `device.html` uses. |
 
-- **Fire extinguishers** — monthly inspection, annual maintenance, internal examination
-  and hydrostatic test per **NFPA 10**. Agent type drives the last two, which is why the
-  five CO2 units (FE2, FE4–FE7) run on a 5-year hydro and the sixteen dry chemical units
-  on 12-year. The internal-exam and hydro clocks start from the cylinder date of
-  manufacture (ZX26 shell stamps, 2026 collar tags), entered as 01/01/2026 — the earliest
-  the stamp allows, so every date it produces is the conservative one.
-- **Emergency lights** — 30-second monthly function test and the 90-minute annual test
-  per **NFPA 101 §7.9.3**.
-- **Eye wash stations** — weekly activation per **ANSI/ISEA Z358.1**, with the annual
-  inspection, and **OSHA 1910.151(c)** as the underlying requirement.
+### QR labels
+
+Every device has a label with a QR code for `device.html?<ID>`. Anyone who scans it, an
+auditor included, sees that device's live status on their own phone with no app and no
+login. The labels are permanent, so **don't rename `life-safety/` or `device.html`**:
+that would break every label on the floor. If either ever has to move, leave a
+`device.html` behind that forwards to the new place.
 
 ### Updating the log
 
-1. Edit `Life-Safety-PM-Log.xlsx` — type the date a check was done into the `Last …`
-   column. Every `Next …`, `Days Remaining` and `Status` cell recalculates itself.
-2. Commit the workbook.
-3. The site picks it up on the next page load. Nothing to rebuild.
+1. Walk mode on the map (or typing rows onto the Inspection History tab) produces an
+   updated `Life Safety PM Log.xlsx`.
+2. Upload it to `life-safety/` as **`Life-Safety-PM-Log.xlsx`**, replacing the old one,
+   and commit. GitHub Pages republishes in a minute or two.
+3. Until that commit, the map and every QR page show the previous upload. Each status
+   page prints when the log was last updated, so a stale upload is visible to anyone
+   who scans.
 
-Only the `Last …` columns and `Notes` are meant to be typed in. The rest are formulas.
+Intervals are code-driven (NFPA 10, NFPA 101 §7.9.3, ANSI/ISEA Z358.1, ZOLL for the
+AEDs) and live on the workbook's Intervals tab. Change a number there and every due
+date moves with it.
 
-### Changing photos
+### Public by design
 
-Because the photos live inside `index.html`, swapping one means rebuilding that file
-rather than committing a JPG. If you'd rather have them swappable, the folder version of
-the tracker does that: it reads `photos/FE1.jpg`, `photos/FE1-loc.jpg` and so on from a
-`photos` folder next to it, so replacing a photo is just a commit with the same filename.
-That version is a 1 MB `index.html` plus a 97-file `photos` folder, which is more to
-upload but easier to maintain month to month.
-
-## Two open compliance items
-
-Findings, not bugs, and both need a person to decide:
-
-- **EW2 is squeeze bottles** at the hi-lo battery chargers, signed as an emergency
-  eyewash station. Under Z358.1 bottles are supplemental only — they don't deliver the
-  15-minute flush a battery-acid splash needs. That location calls for a plumbed or
-  self-contained unit.
-- **All four eye wash stations read overdue.** Z358.1 asks for a *weekly* activation and
-  the log is set to weekly, so they've been overdue since the 07/23/2026 baseline. The
-  fix is a weekly walk, not a longer interval.
+This repo is public, so the map, the photos, the floor plan, the workbook (notes
+included) and the AED certificates can be opened by anyone who has the link. That
+is what lets an auditor scan a label without an account. Keep anything that
+shouldn't be public out of the workbook's Notes columns.
 
 ## Adding more apps later
 
-Put each new app in its own folder with its own `index.html` — like `sds/`, or
-`press-checks/`, `tooling/`, whatever — and it publishes at `…github.io/Atomic-app-hub/press-checks/`
-with no other setup. This top-level `index.html` stays the life safety tracker until you
-decide to make it a landing page instead.
+Put each new app in its own folder with its own `index.html`, like `sds/` and
+`life-safety/`. It publishes at `…github.io/Atomic-app-hub/<folder>/` with no other
+setup. Add a tile for it to the top-level `index.html`.
