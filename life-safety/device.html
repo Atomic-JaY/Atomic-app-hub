@@ -101,6 +101,8 @@ table.hist{width:100%;border-collapse:collapse;font-size:14px;background:var(--c
 .insp.logged b{font-size:17px} .insp.logged span{font-size:14px;grid-column:1}
 .insp.logged .lnk{grid-column:2;grid-row:1}
 .lnk{background:none;border:none;color:inherit;text-decoration:underline;font:inherit;font-size:14px;cursor:pointer;padding:0}
+.inspOpen.top{margin:0 0 14px;border:2px solid var(--navy-2);font-weight:600;font-size:16px}
+.lockNote{font-size:14px;color:var(--muted);background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:9px 12px;margin:0 0 14px}
 .inspOpen{display:block;width:100%;margin-top:14px;font:inherit;font-size:15px;padding:11px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .saved{background:var(--green-bg);border:2px solid var(--green);border-radius:14px;padding:12px 14px;margin:0 0 14px;font-size:15px}
 .saved b{display:block;font-size:17px;margin-bottom:4px}
@@ -290,7 +292,9 @@ function renderDevice(id, d, hist, asOf){
     <div class="loc">${esc(d.location || dev.loc || '')}</div>
     ${d.detail ? `<div class="sub">${esc(d.detail)}</div>` : ''}
     <div class="verdict ${st}"><div class="ic">${icon}</div><div><b>${LABEL[st]}</b><span>${esc(headline)}</span></div></div>
-    ${savedHtml()}${inspectorMode(id) ? `<div id="inspSlot">${inspectHtml(id, d.type)}</div>` : ''}
+    ${savedHtml()}${inspectorMode(id) ? `<div id="inspSlot">${inspectHtml(id, d.type)}</div>`
+      : STATE.scanned === id ? `<button class="inspOpen top" data-act="open">📋 Inspector? Log today's ${esc(nice(ROUTINE[d.type].check).toLowerCase())}</button>`
+      : inspector() ? `<div class="lockNote">Logging is off: this page wasn't opened from ${esc(id)}'s own QR label. Scan the label on the device to log it. Labels printed before 10/29/2026 only show status.</div>` : ''}
     <div class="photos">${photo('', 'Unit')}${photo('-loc', 'Location')}</div>
     ${DOCS[id] ? `<div class="docs">${DOCS[id].map(([n,u]) => `<a href="${u}" target="_blank">📄 ${esc(n)}</a>`).join('')}</div>` : ''}
     <h2>Required checks</h2>
@@ -306,7 +310,6 @@ function renderDevice(id, d, hist, asOf){
       <tr><td class="dt">${short(x.date)}${(x.logged.match(/\d{1,2}:\d{2}\s?[AP]M/i) || [''])[0] ? `<div class="note">${esc(x.logged.match(/\d{1,2}:\d{2}\s?[AP]M/i)[0])}${/qr/i.test(x.logged) ? ' · scan' : ''}</div>` : ''}</td><td>${esc(nice(x.check))}${/fail/i.test(x.result) && x.note ? `<div class="note">${esc(x.note)}</div>` : ''}</td>
       <td class="${/pass/i.test(x.result) ? 'pass' : /fail/i.test(x.result) ? 'fail' : ''}">${esc(x.result)}</td><td>${esc(x.by || '—')}</td></tr>`).join('')}</table>`
       : '<div class="msg">No inspections on record yet.</div>'}
-    ${!inspectorMode(id) && STATE.scanned === id ? '<button class="inspOpen" data-act="open">Inspector? Log an inspection</button>' : ''}
     <div class="asof">${asOf} Inspections are logged by scanning the QR label on the device itself.<br><a href="./#${encodeURIComponent(id)}">Show ${esc(id)} on the plant map</a> (large page)</div>`;
   walkBar();
 }
