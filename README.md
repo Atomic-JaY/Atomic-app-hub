@@ -80,10 +80,29 @@ note. Your name is asked once per phone. Each entry records the clock time and
 **Save to log** (on any status page or the map) downloads the updated
 `Life-Safety-PM-Log.xlsx`.
 
-**Publishing it:** upload that file to `life-safety/` here (Add file → Upload files →
-Commit), replacing the old one. GitHub Pages republishes in a minute or two. Until
-then, only the inspector's phone shows the walk; every status page prints when the
-log was last updated.
+**Publishing it:** on a phone connected to GitHub, **Save to GitHub** commits the walk
+straight to `life-safety/Life-Safety-PM-Log.xlsx`, and every page shows it a minute or two
+later. The commit message lists each device and result. The walk is appended to the log
+as it is on GitHub at that moment, so two saves in a row, or two inspectors, never lose
+each other's rows. On a phone that isn't connected, **Save to log** downloads the file
+instead; upload it to `life-safety/` (Add file → Upload files → Commit) to publish it.
+
+**Connecting a phone (once):**
+1. On github.com: profile picture → **Settings** → **Developer settings** → **Personal access
+   tokens** → **Fine-grained tokens** → **Generate new token**.
+2. Name it (e.g. *Life safety phone*), set an expiration (up to a year), and under
+   **Repository access** choose **Only select repositories** → *Atomic-app-hub*.
+3. Under **Repository permissions** set **Contents** to **Read and write**. Leave everything
+   else at No access. **Generate token** and copy it.
+4. On the phone: open the site → **All devices** → **⚙️ Inspector setup** → paste → **Connect**.
+
+The token lives only in that phone's browser. It is not on the site and should never be
+pasted anywhere else. To retire a phone, tap **Disconnect** there, or delete the token on
+github.com. When it expires, make a new one and connect again.
+
+**The X: share copy** of the map reads this same log from GitHub when it opens, so the
+share and the website always agree. The workbook on the share is a backup; **Load PM Log**
+still opens it if GitHub can't be reached.
 
 ### The record
 
