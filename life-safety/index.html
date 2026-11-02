@@ -847,8 +847,30 @@ function parseWorkbook(buf, fileName){
 // that read, so the Load button below stays the way in. Both paths end in parseWorkbook.
 const WORKBOOK_CANDIDATES = ['Life-Safety-PM-Log.xlsx', 'Life Safety PM Log.xlsx'];
 
+// Opened off a disk (the copy on the X: share), the page reads the live log from
+// GitHub instead, so the share and the website always show the same record. The
+// workbook beside it on the share is only a backup now (Load PM Log still opens it).
+const LIVE_LOG = [
+  'https://raw.githubusercontent.com/Atomic-JaY/Atomic-app-hub/main/life-safety/Life-Safety-PM-Log.xlsx',
+  'https://atomic-jay.github.io/Atomic-app-hub/life-safety/Life-Safety-PM-Log.xlsx',
+];
 async function autoLoadWorkbook(){
-  if(!/^https?:$/.test(location.protocol)) return false;
+  if(!/^https?:$/.test(location.protocol)){
+    for(const url of LIVE_LOG){
+      try{
+        setSyncState('loading', 'Loading the live PM log from GitHub…');
+        const res = await fetch(url + '?t=' + Date.now(), {cache: 'no-store'});
+        if(!res.ok) continue;
+        const buf = new Uint8Array(await res.arrayBuffer());
+        if(!buf.byteLength) continue;
+        parseWorkbook(buf, 'Life Safety PM Log.xlsx');
+        const t = document.getElementById('syncText');
+        if(t && !/error/.test(document.getElementById('syncPill').className)) t.textContent += ' · live from GitHub';
+        return true;
+      }catch(err){ /* offline or blocked: try the next address, then the Load button */ }
+    }
+    return false;
+  }
   for(const name of WORKBOOK_CANDIDATES){
     try{
       setSyncState('loading', 'Loading the PM log…');
@@ -1194,9 +1216,10 @@ function updateWalkBar(){
   }).join(' · ') + (fails ? ` · <span class="f">${fails} failed</span>` : '');
   const save = document.getElementById('wbSave');
   const dc = document.getElementById('wbDiscard');
-  if(!save.dataset.armed) save.textContent = n ? `Save ${n} to log` : 'Save to log';
+  if(!save.dataset.armed) save.textContent = ghSaving ? 'Saving…'
+    : (GH.token() ? (n ? `Save ${n} to GitHub` : 'Save to GitHub') : (n ? `Save ${n} to log` : 'Save to log'));
   if(!dc.dataset.armed) dc.textContent = 'Discard';
-  save.disabled = !n;
+  save.disabled = !n || ghSaving;
   dc.disabled = !n;
 }
 
@@ -1225,6 +1248,7 @@ function saveWalk(){
     TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type) ||
     (+a.dev.replace(PREFIX_RE, '')) - (+b.dev.replace(PREFIX_RE, '')));
   if(!list.length) return;
+  if(GH.token()){ saveWalkGithub(list); return; }
   if(!workbookBytes){
     showBanner('Load the PM log first (<b>📂 Load PM Log</b>), so the walk can be added to it. ' +
       'Your walk is kept in this browser until then.', true);
@@ -1253,6 +1277,25 @@ function saveWalk(){
     `browser just downloaded. Put it in the Emergency Device Log folder in place of the old ` +
     `one, and upload it to GitHub, so everyone sees this walk.`);
   updateWalkBar();
+}
+
+let ghSaving = false;
+async function saveWalkGithub(list){
+  if(ghSaving) return;
+  ghSaving = true; updateWalkBar();
+  const n = list.length, fails = list.filter(e => e.result === 'Fail').length;
+  try{
+    const r = await ghSaveWalk(list);
+    walk.entries = {}; walkPersist();
+    parseWorkbook(r.bytes, workbookName);
+    showBanner(`Saved ${n} inspection${n === 1 ? '' : 's'}` + (fails ? ` (${fails} failed)` : '') +
+      ` and committed them to GitHub. Every QR page shows them within a minute or two.` +
+      (r.commitUrl ? ` <a href="${esc(r.commitUrl)}" target="_blank">See the change</a>` : ''));
+  }catch(err){
+    showBanner('Not saved to GitHub: ' + esc(err instanceof TypeError ? 'could not reach GitHub.' : err.message) +
+      ' Your walk is still here; try Save again.', true);
+  }
+  ghSaving = false; updateWalkBar(); render();
 }
 
 document.getElementById('walkBtn').addEventListener('click', () => {
@@ -1407,6 +1450,84 @@ function appendHistory(bytes, entries){
 
   const out = XLSX.CFB.write(cfb, {fileType: 'zip', type: 'array', compression: true});
   return out instanceof Uint8Array ? out : new Uint8Array(out);
+}
+
+
+// ───────────────────── Saving a walk straight to GitHub ─────────────────────
+// Shared by the map (index.html) and the QR status page (device.html).
+//
+// An inspector's phone can hold a GitHub fine-grained token limited to the
+// Atomic-app-hub repo with Contents: read and write. It lives only in that phone's
+// browser storage (key "lspm-gh-token"); it is never part of the site. With it,
+// "Save to log" commits the walk to the repo directly; without it, Save downloads
+// the updated workbook as before.
+//
+// The walk is always appended to the log as it is on GitHub at the moment of
+// saving, not to the copy the page loaded earlier, so two saves in one walk, or
+// two inspectors saving the same morning, never drop each other's rows. The
+// commit carries the file's sha, so if anything changes between reading and
+// writing GitHub refuses the write and we read again and retry.
+const GH = {
+  owner: 'Atomic-JaY', repo: 'Atomic-app-hub', branch: 'main',
+  path: 'life-safety/Life-Safety-PM-Log.xlsx',
+  KEY: 'lspm-gh-token',
+  token(){ try{ return (localStorage.getItem(this.KEY) || '').trim(); }catch(e){ return ''; } },
+  setToken(t){ try{ t ? localStorage.setItem(this.KEY, t.trim()) : localStorage.removeItem(this.KEY); }catch(e){} },
+  url(){ return `https://api.github.com/repos/${this.owner}/${this.repo}/contents/${this.path}`; },
+  headers(){
+    return {'Authorization': 'Bearer ' + this.token(), 'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'};
+  },
+  async read(){
+    const res = await fetch(this.url() + '?ref=' + this.branch + '&t=' + Date.now(), {headers: this.headers(), cache: 'no-store'});
+    if(!res.ok) throw ghError(res.status, 'read');
+    const j = await res.json();
+    const bin = atob((j.content || '').replace(/\s/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if(!bytes.length) throw new Error('GitHub sent an empty log');
+    return {sha: j.sha, bytes};
+  },
+  async write(bytes, sha, message){
+    let bin = '';
+    for(let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    const res = await fetch(this.url(), {method: 'PUT', headers: {...this.headers(), 'Content-Type': 'application/json'},
+      body: JSON.stringify({message, content: btoa(bin), sha, branch: this.branch})});
+    if(res.status === 409 || res.status === 422) return {conflict: true};
+    if(!res.ok) throw ghError(res.status, 'write');
+    const j = await res.json();
+    return {commitUrl: j.commit && j.commit.html_url};
+  },
+};
+function ghError(status, what){
+  const why = status === 401 ? 'GitHub did not accept the token (expired or mistyped). Connect again on the All devices page.'
+    : status === 403 || status === 404 ? `The token is not allowed to ${what} the log. It needs access to Atomic-app-hub with Contents: Read and write.`
+    : `GitHub answered ${status}.`;
+  const e = new Error(why); e.status = status; return e;
+}
+function ghWalkMessage(list){
+  const fails = list.filter(e => e.result === 'Fail').length;
+  const who = [...new Set(list.map(e => e.by).filter(Boolean))].join(', ');
+  const day = list[0] ? list[0].date.replace(/^(\d{4})-(\d\d)-(\d\d)$/, '$2/$3/$1') : '';
+  return `Walk ${day}: ${list.length} check${list.length === 1 ? '' : 's'}` +
+    (fails ? `, ${fails} failed` : '') + (who ? ` (${who})` : '') +
+    '\n\n' + list.map(e => `${e.dev} ${e.check}: ${e.result}${e.note ? ' - ' + e.note : ''}`).join('\n');
+}
+// Append the walk to the current GitHub log and commit it. Returns the new bytes.
+async function ghSaveWalk(list){
+  for(let attempt = 0; attempt < 3; attempt++){
+    const {sha, bytes} = await GH.read();
+    const out = appendHistory(bytes, list);
+    const r = await GH.write(out, sha, ghWalkMessage(list));
+    if(!r.conflict) return {bytes: out, commitUrl: r.commitUrl};
+  }
+  throw new Error('The log kept changing on GitHub while saving. Nothing was lost; try Save again.');
+}
+// Check a token can at least read the log (write access shows on the first save).
+async function ghTest(token){
+  const keep = GH.token(); GH.setToken(token);
+  try{ await GH.read(); return true; }
+  catch(e){ GH.setToken(keep); throw e; }
 }
 
 
